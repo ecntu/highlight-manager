@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+
+{% block title %}Search - PHM{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h2 style="margin-bottom: 20px;">Search Highlights</h2>
+
+    <form method="get" action="/search">
+        <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+            <input type="text" name="q" value="{{ query or '' }}" placeholder="Search highlights, notes, and sources..."
+                style="flex: 1;" autofocus>
+            <button type="submit">Search</button>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;">
+            <select name="source_type">
+                <option value="">All Types</option>
+                <option value="book" {% if source_type=='book' %}selected{% endif %}>Book</option>
+                <option value="article" {% if source_type=='article' %}selected{% endif %}>Article</option>
+                <option value="web" {% if source_type=='web' %}selected{% endif %}>Web</option>
+                <option value="pdf" {% if source_type=='pdf' %}selected{% endif %}>PDF</option>
+                <option value="video" {% if source_type=='video' %}selected{% endif %}>Video</option>
+                <option value="podcast" {% if source_type=='podcast' %}selected{% endif %}>Podcast</option>
+            </select>
+
+            <select name="status">
+                <option value="">All Status</option>
+                <option value="active" {% if status=='active' %}selected{% endif %}>Active</option>
+                <option value="archived" {% if status=='archived' %}selected{% endif %}>Archived</option>
+            </select>
+
+            <select name="favorite">
+                <option value="">All Highlights</option>
+                <option value="true" {% if favorite=='true' %}selected{% endif %}>Favorites Only</option>
+            </select>
+
+            <button type="submit" class="secondary">Filter</button>
+        </div>
+    </form>
+</div>
+
+{% if query or source_type or status or favorite %}
+<div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+        <h3>Results</h3>
+        <small style="color: #666;">{{ results|length }} highlight{% if results|length != 1 %}s{% endif %}</small>
+    </div>
+
+    {% if results %}
+    {% for highlight in results %}
+    <div style="border-bottom: 1px solid #eee; padding: 15px 0; cursor: pointer;"
+        onclick="window.location='/highlights/{{ highlight.id }}'">
+        <p style="margin-bottom: 8px; line-height: 1.5;">{{ highlight.text }}</p>
+        <div style="display: flex; gap: 15px; align-items: center;">
+            <small style="color: #666;">{{ highlight.created_at.strftime('%b %d, %Y') }}</small>
+            {% if highlight.source %}
+            <small style="color: #4a90e2;">📚 {{ highlight.source.title }}</small>
+            {% endif %}
+            {% if highlight.tags %}
+            <small style="color: #888;">
+                {% for tag in highlight.tags %}
+                #{{ tag.name }}{% if not loop.last %}, {% endif %}
+                {% endfor %}
+            </small>
+            {% endif %}
+            {% if highlight.is_favorite %}
+            <small style="color: #f4a742;">★</small>
+            {% endif %}
+        </div>
+    </div>
+    {% endfor %}
+    {% else %}
+    <p style="color: #666; text-align: center; padding: 40px 0;">No highlights found matching your search.</p>
+    {% endif %}
+</div>
+{% endif %}
+{% endblock %}

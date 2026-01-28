@@ -130,11 +130,11 @@
     {% if current_user %}
     <header>
         <div class="container">
-            <h1>PHM</h1>
+            <h1><a href="/highlights" style="color: inherit; text-decoration: none;">PHM</a></h1>
             <nav>
-                <a href="/">Home</a>
                 <a href="/highlights">Highlights</a>
                 <a href="/sources">Sources</a>
+                <a href="/search">Search</a>
                 <a href="/settings">Settings</a>
                 <a href="/logout">Logout ({{ current_user.username }})</a>
             </nav>

@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+
+{% block title %}Sources - PHM{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h2 style="margin-bottom: 20px;">Sources</h2>
+    <p style="color: #666; margin-bottom: 20px;">Sources are books, articles, websites, and other media where your
+        highlights come from.</p>
+
+    {% if sources %}
+    <div style="display: grid; gap: 15px;">
+        {% for source in sources %}
+        <div style="border: 1px solid #e0e0e0; padding: 15px; border-radius: 4px; cursor: pointer;"
+            onclick="window.location='/sources/{{ source.id }}'">
+            <div style="display: flex; justify-content: space-between; align-items: start;">
+                <div style="flex: 1;">
+                    <h3 style="font-size: 16px; margin-bottom: 5px;">{{ source.title }}</h3>
+                    {% if source.author %}
+                    <p style="color: #666; font-size: 14px; margin-bottom: 5px;">by {{ source.author }}</p>
+                    {% endif %}
+                    <div style="display: flex; gap: 15px; font-size: 13px; color: #888;">
+                        <span style="text-transform: capitalize;">{{ source.type.value }}</span>
+                        <span>{{ source.highlights|length }} highlight{% if source.highlights|length != 1 %}s{% endif
+                            %}</span>
+                    </div>
+                </div>
+                <span
+                    style="background: #f0f0f0; padding: 4px 8px; border-radius: 3px; font-size: 12px; text-transform: uppercase;">{{
+                    source.type.value }}</span>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <p style="color: #666; text-align: center; padding: 40px 0;">No sources yet. Add highlights with source information
+        to see them here.</p>
+    {% endif %}
+</div>
+{% endblock %}

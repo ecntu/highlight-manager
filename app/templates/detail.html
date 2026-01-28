@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+
+{% block title %}{{ highlight.text[:50] }}... - PHM{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 20px;">
+        <h2>Highlight Details</h2>
+        <div style="display: flex; gap: 10px;">
+            <form method="post" action="/highlights/{{ highlight.id }}/favorite" style="display: inline;">
+                <button type="submit" class="secondary">
+                    {% if highlight.is_favorite %}★ Favorited{% else %}☆ Favorite{% endif %}
+                </button>
+            </form>
+            <form method="post" action="/highlights/{{ highlight.id }}/archive" style="display: inline;">
+                <button type="submit" class="secondary">
+                    {% if highlight.status.value == 'archived' %}Unarchive{% else %}Archive{% endif %}
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <form method="post" action="/highlights/{{ highlight.id }}/edit">
+        <div class="form-group">
+            <label>Text</label>
+            <textarea name="text" rows="6" required>{{ highlight.text }}</textarea>
+        </div>
+
+        <div class="form-group">
+            <label>Note</label>
+            <textarea name="note" rows="3" placeholder="Why does this matter?">{{ highlight.note or '' }}</textarea>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+            <div class="form-group">
+                <label>Tags (comma-separated)</label>
+                <input type="text" name="tags"
+                    value="{% if highlight.tags %}{% for tag in highlight.tags %}{{ tag.name }}{% if not loop.last %}, {% endif %}{% endfor %}{% endif %}"
+                    placeholder="tag1, tag2, tag3">
+            </div>
+
+            <div class="form-group">
+                <label>Source Title</label>
+                <input type="text" name="source_title" value="{{ highlight.source.title if highlight.source else '' }}"
+                    placeholder="Book, article, etc.">
+            </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+            <div class="form-group">
+                <label>Source Type</label>
+                <select name="source_type">
+                    <option value="">None</option>
+                    <option value="book" {% if highlight.source and highlight.source.type.value=='book' %}selected{%
+                        endif %}>Book</option>
+                    <option value="article" {% if highlight.source and highlight.source.type.value=='article'
+                        %}selected{% endif %}>Article</option>
+                    <option value="web" {% if highlight.source and highlight.source.type.value=='web' %}selected{% endif
+                        %}>Web</option>
+                    <option value="pdf" {% if highlight.source and highlight.source.type.value=='pdf' %}selected{% endif
+                        %}>PDF</option>
+                    <option value="video" {% if highlight.source and highlight.source.type.value=='video' %}selected{%
+                        endif %}>Video</option>
+                    <option value="podcast" {% if highlight.source and highlight.source.type.value=='podcast'
+                        %}selected{% endif %}>Podcast</option>
+                    <option value="tweet" {% if highlight.source and highlight.source.type.value=='tweet' %}selected{%
+                        endif %}>Tweet</option>
+                    <option value="note" {% if highlight.source and highlight.source.type.value=='note' %}selected{%
+                        endif %}>Note</option>
+                    <option value="other" {% if highlight.source and highlight.source.type.value=='other' %}selected{%
+                        endif %}>Other</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Author</label>
+                <input type="text" name="source_author"
+                    value="{{ highlight.source.author if highlight.source and highlight.source.author else '' }}"
+                    placeholder="Author name">
+            </div>
+        </div>
+
+        <div style="display: flex; gap: 10px; margin-top: 15px;">
+            <button type="submit">Save Changes</button>
+            <a href="/highlights"
+                style="padding: 10px 20px; background: #6c757d; color: white; text-decoration: none; border-radius: 4px; font-size: 14px; font-weight: 500;">Cancel</a>
+        </div>
+    </form>
+</div>
+
+<div class="card">
+    <h3 style="margin-bottom: 15px; font-size: 16px;">Metadata</h3>
+    <div style="display: grid; grid-template-columns: 150px 1fr; gap: 10px; font-size: 14px;">
+        <strong>Created:</strong>
+        <span>{{ highlight.created_at.strftime('%B %d, %Y at %I:%M %p') }}</span>
+
+        <strong>Last Updated:</strong>
+        <span>{{ highlight.updated_at.strftime('%B %d, %Y at %I:%M %p') }}</span>
+
+        {% if highlight.device %}
+        <strong>Captured From:</strong>
+        <span>{{ highlight.device.name }}</span>
+        {% endif %}
+
+        <strong>Status:</strong>
+        <span style="text-transform: capitalize;">{{ highlight.status.value }}</span>
+    </div>
+</div>
+{% endblock %}
