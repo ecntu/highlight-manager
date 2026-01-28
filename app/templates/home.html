@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card">
+    <h2 style="margin-bottom: 15px;">Quick Add</h2>
+    <form method="post" action="/highlights/add">
+        <div class="form-group">
+            <textarea name="text" rows="4" placeholder="Paste your highlight here..." required></textarea>
+        </div>
+        <button type="submit">Save Highlight</button>
+    </form>
+</div>
+
+<div class="card">
+    <h2 style="margin-bottom: 15px;">Recent Highlights</h2>
+    {% if highlights %}
+    {% for highlight in highlights %}
+    <div style="border-bottom: 1px solid #eee; padding: 15px 0;">
+        <p style="margin-bottom: 8px;">{{ highlight.text }}</p>
+        <small style="color: #666;">{{ highlight.created_at.strftime('%b %d, %Y') }}</small>
+    </div>
+    {% endfor %}
+    {% else %}
+    <p style="color: #666;">No highlights yet. Add your first one above!</p>
+    {% endif %}
+</div>
+{% endblock %}
