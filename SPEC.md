@@ -248,80 +248,77 @@ Search: Postgres FTS index on `(text, note)` via `tsvector`
 
 ---
 
-### Device-friendly endpoints (recommended)
+## RESTful API Endpoints
 
-#### Ingest
+### Auth
 
-* `POST /api/ingest/highlight`
+* `POST /register` - create user account
+* `POST /login` - authenticate user (session-based)
+* `GET /logout` - end session
 
-  * Auth: device key or UI
-  * Body:
+### Highlights
 
-    * `text` (required)
-    * `note` (optional)
-    * `tags` (optional: string[])
-    * `source` (optional object):
+* `GET /highlights` - list highlights with filters (`?q=search&tag=name&source_id=uuid&status=active&favorite=true`)
+* `POST /highlights` - create new highlight (auth: UI session or device key)
+* `GET /highlights/{id}` - get highlight detail
+* `PATCH /highlights/{id}` - update highlight (text, note, tags, source) *(UI only)*
+* `DELETE /highlights/{id}` - archive highlight *(UI only)*
+* `PUT /highlights/{id}/favorite` - toggle favorite status *(UI only)*
 
-      * `type`, `title`, `author`, `url`, `metadata`
-    * `location` (optional object): `page`, `timestamp_seconds`, `url_fragment`, etc.
-    * `highlighted_at` (optional)
-  * Behavior:
+**Device API** (same endpoint, device key auth):
+* `POST /highlights` - simplified ingest
+  * Form fields: `text` (required), `note`, `tags` (csv), `source_title`, `source_type`, `source_author`, `location` (json)
 
-    * Creates highlight
-    * Creates source if provided and not found (simple match by `type+title+author`)
+### Sources
 
-#### Read
+* `GET /sources` - list all sources (`?type=book&q=search`)
+* `GET /sources/{id}` - get source detail with highlights
 
-* `GET /api/highlights?q=&tag=&source_id=&collection_id=&status=&from=&to=&page=`
-* `GET /api/highlights/{id}`
-* `GET /api/sources?type=&q=&page=`
-* `GET /api/tags?q=`
-* `GET /api/digest/today`
-* `GET /api/digest/weekly?week=YYYY-WW`
+### Tags
 
-#### No delete for device keys
+* `GET /tags` - list all tags (`?q=search`)
 
-* Do not expose delete endpoints to device-key auth.
-* (Optional) You can expose delete to UI auth only later, but v1 can simply not implement deletion.
+### Collections
 
----
+* `GET /collections` - list collections
+* `POST /collections` - create collection
+* `GET /collections/{id}` - get collection detail
+* `PATCH /collections/{id}` - update collection
+* `DELETE /collections/{id}` - delete collection
+* `PUT /collections/{id}/highlights/{highlight_id}` - add highlight to collection
+* `DELETE /collections/{id}/highlights/{highlight_id}` - remove highlight from collection
 
-### UI/Management endpoints
+### Links
 
-#### Highlights (UI)
+* `GET /links` - list highlight links
+* `POST /links` - create link between highlights
+* `DELETE /links/{id}` - delete link
 
-* `POST /api/highlights` (full create)
-* `PATCH /api/highlights/{id}` (edit text/note/tags/source/linkage)
-* `POST /api/highlights/{id}/favorite` `{is_favorite}`
-* `POST /api/highlights/{id}/archive` `{status}`
+### Devices (UI only)
 
-#### Links
+* `GET /devices` - list active devices
+* `POST /devices` - create device API key (returns raw key once)
+* `DELETE /devices/{id}` - revoke device
 
-* `POST /api/links` `{from_id, to_id, type, note}`
-* `DELETE /api/links/{id}` *(UI only; optional—can also avoid deletes by allowing “inactive” flag)*
+### Digest
 
-#### Collections
+* `GET /digest/today` - daily highlights
+* `GET /digest/weekly` - weekly summary (`?week=YYYY-WW`)
 
-* `POST /api/collections`
-* `POST /api/collections/{id}/items` `{highlight_ids}`
-* `DELETE /api/collections/{id}/items/{highlight_id}` *(UI only; optional)*
+### Import/Export (UI only)
 
-#### Device keys
+* `POST /import/kindle` - import Kindle highlights
+* `POST /import/csv` - import CSV file
+* `GET /export/json` - export all data as JSON
+* `GET /export/csv` - export highlights as CSV
 
-* `POST /api/devices` `{name}` → returns raw `api_key` once
-* `GET /api/devices` → list devices (no keys)
-* `POST /api/devices/{id}/revoke` → sets `revoked_at`
+### Settings (UI only)
 
-#### Import/Export
-
-* `POST /api/import/kindle`
-* `POST /api/import/csv`
-* `GET /api/export/json`
-* `GET /api/export/csv`
+* `GET /settings` - view settings page
+* `PATCH /digest-config` - update digest preferences
 
 ---
 
-## 9) Resurfacing Algorithm (v1)
 
 Same as before (simple scoring based on time since last reviewed, favorites, tag focus, link degree). Track:
 

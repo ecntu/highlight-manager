@@ -7,12 +7,12 @@
     <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 20px;">
         <h2>Highlight Details</h2>
         <div style="display: flex; gap: 10px;">
-            <form method="post" action="/highlights/{{ highlight.id }}/favorite" style="display: inline;">
+            <form method="post" action="/highlights/{{ highlight.id }}/favorite?_method=PUT" style="display: inline;">
                 <button type="submit" class="secondary">
                     {% if highlight.is_favorite %}★ Favorited{% else %}☆ Favorite{% endif %}
                 </button>
             </form>
-            <form method="post" action="/highlights/{{ highlight.id }}/archive" style="display: inline;">
+            <form method="post" action="/highlights/{{ highlight.id }}?_method=DELETE" style="display: inline;">
                 <button type="submit" class="secondary">
                     {% if highlight.status.value == 'archived' %}Unarchive{% else %}Archive{% endif %}
                 </button>
@@ -20,7 +20,7 @@
         </div>
     </div>
 
-    <form method="post" action="/highlights/{{ highlight.id }}/edit">
+    <form method="post" action="/highlights/{{ highlight.id }}?_method=PATCH">
         <div class="form-group">
             <label>Text</label>
             <textarea name="text" rows="6" required>{{ highlight.text }}</textarea>

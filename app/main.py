@@ -2,17 +2,34 @@ from fastapi import FastAPI, Depends, HTTPException, status, Form, Request, Resp
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
 from datetime import datetime
 import secrets
 from typing import Optional
 from app.database import get_db
-from app.models import User, Highlight, Device, Source, Tag, SourceType
+from app.models import User, Highlight, Device, Source, Tag, SourceType, HighlightStatus
 from app.auth import hash_password, verify_password
 from app.config import settings
 
+
+class MethodOverrideMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        # Check for _method in query params for simplicity
+        if request.method == "POST":
+            method_override = request.query_params.get("_method")
+            if method_override and method_override.upper() in [
+                "PUT",
+                "PATCH",
+                "DELETE",
+            ]:
+                request.scope["method"] = method_override.upper()
+        return await call_next(request)
+
+
 app = FastAPI(title="Personal Highlight Manager")
+app.add_middleware(MethodOverrideMiddleware)
 app.add_middleware(SessionMiddleware, secret_key=settings.secret_key)
 templates = Jinja2Templates(directory="app/templates")
 
@@ -82,7 +99,7 @@ def login(
 
 
 @app.get("/highlights", response_class=HTMLResponse)
-def highlights_page(
+def list_highlights(
     request: Request, user: User = Depends(require_user), db: Session = Depends(get_db)
 ):
     highlights = (
@@ -98,16 +115,41 @@ def highlights_page(
     )
 
 
-@app.post("/highlights/add")
-def add_highlight(
+@app.post("/highlights")
+def create_highlight(
     request: Request,
     text: str = Form(),
     tags: Optional[str] = Form(None),
     note: Optional[str] = Form(None),
+    source_title: Optional[str] = Form(None),
+    source_type: Optional[str] = Form(None),
+    source_author: Optional[str] = Form(None),
     user: User = Depends(require_user),
     db: Session = Depends(get_db),
 ):
-    highlight = Highlight(user_id=user.id, text=text, note=note)
+    source_id = None
+    if source_title and source_type:
+        source = (
+            db.query(Source)
+            .filter(
+                Source.user_id == user.id,
+                Source.title == source_title,
+                Source.type == source_type,
+            )
+            .first()
+        )
+        if not source:
+            source = Source(
+                user_id=user.id,
+                title=source_title,
+                type=SourceType(source_type),
+                author=source_author,
+            )
+            db.add(source)
+            db.flush()
+        source_id = source.id
+
+    highlight = Highlight(user_id=user.id, text=text, note=note, source_id=source_id)
     db.add(highlight)
     db.flush()
 
@@ -150,7 +192,7 @@ def settings_page(
     )
 
 
-@app.post("/devices/create")
+@app.post("/devices")
 def create_device(
     request: Request,
     name: str = Form(),
@@ -183,8 +225,8 @@ def create_device(
     )
 
 
-@app.post("/devices/{device_id}/revoke")
-def revoke_device(
+@app.delete("/devices/{device_id}")
+def delete_device(
     device_id: str,
     user: User = Depends(require_user),
     db: Session = Depends(get_db),
@@ -278,7 +320,7 @@ def ingest_highlight(
 
 
 @app.get("/highlights/{highlight_id}", response_class=HTMLResponse)
-def highlight_detail(
+def get_highlight(
     highlight_id: str,
     request: Request,
     user: User = Depends(require_user),
@@ -298,8 +340,8 @@ def highlight_detail(
     )
 
 
-@app.post("/highlights/{highlight_id}/edit")
-def edit_highlight(
+@app.patch("/highlights/{highlight_id}")
+def update_highlight(
     highlight_id: str,
     request: Request,
     text: str = Form(),
@@ -365,7 +407,7 @@ def edit_highlight(
     return RedirectResponse(url=f"/highlights/{highlight_id}", status_code=303)
 
 
-@app.post("/highlights/{highlight_id}/favorite")
+@app.put("/highlights/{highlight_id}/favorite")
 def toggle_favorite(
     highlight_id: str,
     user: User = Depends(require_user),
@@ -382,8 +424,8 @@ def toggle_favorite(
     return RedirectResponse(url=f"/highlights/{highlight_id}", status_code=303)
 
 
-@app.post("/highlights/{highlight_id}/archive")
-def toggle_archive(
+@app.delete("/highlights/{highlight_id}")
+def delete_highlight(
     highlight_id: str,
     user: User = Depends(require_user),
     db: Session = Depends(get_db),
@@ -394,15 +436,13 @@ def toggle_archive(
         .first()
     )
     if highlight:
-        from app.models import HighlightStatus
-
         highlight.status = (
             HighlightStatus.ARCHIVED
             if highlight.status == HighlightStatus.ACTIVE
             else HighlightStatus.ACTIVE
         )
         db.commit()
-    return RedirectResponse(url=f"/highlights/{highlight_id}", status_code=303)
+    return RedirectResponse(url="/highlights", status_code=303)
 
 
 @app.get("/sources", response_class=HTMLResponse)

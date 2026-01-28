@@ -13,7 +13,7 @@
     </div>
     {% endif %}
 
-    <form method="post" action="/devices/create" style="margin-bottom: 30px;">
+    <form method="post" action="/devices" style="margin-bottom: 30px;">
         <div style="display: flex; gap: 10px;">
             <input type="text" name="name" placeholder="Device name (e.g., iPhone, MacBook)" required style="flex: 1;">
             <button type="submit">Create Device Key</button>
@@ -44,7 +44,7 @@
                     {% endif %}
                 </td>
                 <td style="padding: 12px 0; text-align: right;">
-                    <form method="post" action="/devices/{{ device.id }}/revoke" style="display: inline;">
+                    <form method="post" action="/devices/{{ device.id }}?_method=DELETE" style="display: inline;">
                         <button type="submit" class="secondary"
                             style="padding: 6px 12px; font-size: 13px;">Revoke</button>
                     </form>
