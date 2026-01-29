@@ -2,34 +2,18 @@ from fastapi import FastAPI, Depends, HTTPException, status, Form, Request, Resp
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
-from starlette.middleware.base import BaseHTTPMiddleware
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
 from datetime import datetime
+from urllib.parse import urlparse
 import secrets
 from typing import Optional
 from app.database import get_db
-from app.models import User, Highlight, Device, Source, Tag, SourceType, HighlightStatus
+from app.models import User, Highlight, Device, Source, Tag, SourceType, HighlightStatus, Collection, CollectionItem
 from app.auth import hash_password, verify_password
 from app.config import settings
 
-
-class MethodOverrideMiddleware(BaseHTTPMiddleware):
-    async def dispatch(self, request: Request, call_next):
-        # Check for _method in query params for simplicity
-        if request.method == "POST":
-            method_override = request.query_params.get("_method")
-            if method_override and method_override.upper() in [
-                "PUT",
-                "PATCH",
-                "DELETE",
-            ]:
-                request.scope["method"] = method_override.upper()
-        return await call_next(request)
-
-
 app = FastAPI(title="Personal Highlight Manager")
-app.add_middleware(MethodOverrideMiddleware)
 app.add_middleware(SessionMiddleware, secret_key=settings.secret_key)
 templates = Jinja2Templates(directory="app/templates")
 
@@ -46,6 +30,97 @@ def require_user(request: Request, db: Session = Depends(get_db)) -> User:
     if not user:
         raise HTTPException(status_code=401, detail="Not authenticated")
     return user
+
+
+def is_htmx(request: Request) -> bool:
+    return request.headers.get("HX-Request") == "true"
+
+
+def create_highlight_with_metadata(
+    user_id: str,
+    text: str,
+    note: Optional[str],
+    tags: Optional[str],
+    source_url: Optional[str],
+    source_title: Optional[str],
+    source_author: Optional[str],
+    device_id: Optional[str],
+    db: Session,
+) -> Highlight:
+    source_id = None
+    if source_url or source_title:
+        # Extract domain from URL if provided
+        domain = None
+        if source_url:
+            parsed = urlparse(source_url)
+            domain = parsed.netloc or None
+            
+        # If only URL provided, use domain as title
+        if source_url and not source_title:
+            source_title = domain or source_url
+        
+        # Match by URL if provided, otherwise by title
+        if source_url:
+            source = (
+                db.query(Source)
+                .filter(
+                    Source.user_id == user_id,
+                    Source.url == source_url,
+                )
+                .first()
+            )
+        else:
+            source = (
+                db.query(Source)
+                .filter(
+                    Source.user_id == user_id,
+                    Source.title.ilike(source_title),
+                )
+                .first()
+            )
+
+        if not source:
+            # Infer type: if url provided it's web, otherwise book
+            source_type = SourceType.WEB if source_url else SourceType.BOOK
+            source = Source(
+                user_id=user_id,
+                url=source_url,
+                domain=domain,
+                title=source_title,
+                author=source_author,
+                type=source_type,
+            )
+            db.add(source)
+            db.flush()
+        source_id = source.id
+
+    highlight = Highlight(
+        user_id=user_id,
+        text=text,
+        note=note,
+        source_id=source_id,
+        device_id=device_id,
+    )
+    db.add(highlight)
+    db.flush()
+
+    if tags:
+        tag_names = [t.strip() for t in tags.split(",") if t.strip()]
+        for tag_name in tag_names:
+            tag = (
+                db.query(Tag)
+                .filter(Tag.user_id == user_id, Tag.name == tag_name)
+                .first()
+            )
+            if not tag:
+                tag = Tag(user_id=user_id, name=tag_name)
+                db.add(tag)
+                db.flush()
+            highlight.tags.append(tag)
+
+    db.commit()
+    db.refresh(highlight)
+    return highlight
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -121,53 +196,36 @@ def create_highlight(
     text: str = Form(),
     tags: Optional[str] = Form(None),
     note: Optional[str] = Form(None),
+    source_url: Optional[str] = Form(None),
     source_title: Optional[str] = Form(None),
-    source_type: Optional[str] = Form(None),
     source_author: Optional[str] = Form(None),
     user: User = Depends(require_user),
     db: Session = Depends(get_db),
 ):
-    source_id = None
-    if source_title and source_type:
-        source = (
-            db.query(Source)
-            .filter(
-                Source.user_id == user.id,
-                Source.title == source_title,
-                Source.type == source_type,
-            )
-            .first()
+    # Convert empty strings to None
+    source_url = source_url.strip() if source_url else None
+    source_title = source_title.strip() if source_title else None
+    source_author = source_author.strip() if source_author else None
+    tags = tags.strip() if tags else None
+    note = note.strip() if note else None
+    
+    highlight = create_highlight_with_metadata(
+        user_id=user.id,
+        text=text,
+        note=note,
+        tags=tags,
+        source_url=source_url or None,
+        source_title=source_title or None,
+        source_author=source_author or None,
+        device_id=None,
+        db=db,
+    )
+
+    if is_htmx(request):
+        return templates.TemplateResponse(
+            "partials/highlight_item.html",
+            {"request": request, "highlight": highlight},
         )
-        if not source:
-            source = Source(
-                user_id=user.id,
-                title=source_title,
-                type=SourceType(source_type),
-                author=source_author,
-            )
-            db.add(source)
-            db.flush()
-        source_id = source.id
-
-    highlight = Highlight(user_id=user.id, text=text, note=note, source_id=source_id)
-    db.add(highlight)
-    db.flush()
-
-    if tags:
-        tag_names = [t.strip() for t in tags.split(",") if t.strip()]
-        for tag_name in tag_names:
-            tag = (
-                db.query(Tag)
-                .filter(Tag.user_id == user.id, Tag.name == tag_name)
-                .first()
-            )
-            if not tag:
-                tag = Tag(user_id=user.id, name=tag_name)
-                db.add(tag)
-                db.flush()
-            highlight.tags.append(tag)
-
-    db.commit()
     return RedirectResponse(url="/highlights", status_code=303)
 
 
@@ -214,6 +272,13 @@ def create_device(
         .filter(Device.user_id == user.id, Device.revoked_at == None)
         .all()
     )
+
+    if is_htmx(request):
+        return templates.TemplateResponse(
+            "partials/devices_table.html",
+            {"request": request, "devices": devices, "new_api_key": api_key},
+        )
+
     return templates.TemplateResponse(
         "settings.html",
         {
@@ -227,6 +292,7 @@ def create_device(
 
 @app.delete("/devices/{device_id}")
 def delete_device(
+    request: Request,
     device_id: str,
     user: User = Depends(require_user),
     db: Session = Depends(get_db),
@@ -239,16 +305,19 @@ def delete_device(
     if device:
         device.revoked_at = datetime.utcnow()
         db.commit()
+
+    if is_htmx(request):
+        return HTMLResponse("", status_code=200)
     return RedirectResponse(url="/settings", status_code=303)
 
 
-@app.post("/api/ingest/highlight")
-def ingest_highlight(
+@app.post("/api/highlights")
+def api_create_highlight(
     text: str = Form(),
     note: Optional[str] = Form(None),
     tags: Optional[str] = Form(None),
+    source_url: Optional[str] = Form(None),
     source_title: Optional[str] = Form(None),
-    source_type: Optional[str] = Form(None),
     source_author: Optional[str] = Form(None),
     request: Request = None,
     db: Session = Depends(get_db),
@@ -268,54 +337,27 @@ def ingest_highlight(
         raise HTTPException(status_code=401, detail="Invalid API key")
 
     device.last_used_at = datetime.utcnow()
+    db.commit()
 
-    source_id = None
-    if source_title and source_type:
-        source = (
-            db.query(Source)
-            .filter(
-                Source.user_id == device.user_id,
-                Source.title == source_title,
-                Source.type == source_type,
-            )
-            .first()
-        )
+    # Convert empty strings to None
+    source_url = source_url.strip() if source_url else None
+    source_title = source_title.strip() if source_title else None
+    source_author = source_author.strip() if source_author else None
+    tags = tags.strip() if tags else None
+    note = note.strip() if note else None
 
-        if not source:
-            source = Source(
-                user_id=device.user_id,
-                title=source_title,
-                type=SourceType(source_type),
-                author=source_author,
-            )
-            db.add(source)
-            db.flush()
-        source_id = source.id
-
-    highlight = Highlight(
+    highlight = create_highlight_with_metadata(
         user_id=device.user_id,
-        device_id=device.id,
-        source_id=source_id,
         text=text,
         note=note,
+        tags=tags,
+        source_url=source_url or None,
+        source_title=source_title or None,
+        source_author=source_author or None,
+        device_id=device.id,
+        db=db,
     )
-    db.add(highlight)
 
-    if tags:
-        tag_names = [t.strip() for t in tags.split(",") if t.strip()]
-        for tag_name in tag_names:
-            tag = (
-                db.query(Tag)
-                .filter(Tag.user_id == device.user_id, Tag.name == tag_name)
-                .first()
-            )
-            if not tag:
-                tag = Tag(user_id=device.user_id, name=tag_name)
-                db.add(tag)
-                db.flush()
-            highlight.tags.append(tag)
-
-    db.commit()
     return {"id": str(highlight.id), "created_at": highlight.created_at.isoformat()}
 
 
@@ -347,8 +389,8 @@ def update_highlight(
     text: str = Form(),
     note: Optional[str] = Form(None),
     tags: Optional[str] = Form(None),
+    source_url: Optional[str] = Form(None),
     source_title: Optional[str] = Form(None),
-    source_type: Optional[str] = Form(None),
     source_author: Optional[str] = Form(None),
     user: User = Depends(require_user),
     db: Session = Depends(get_db),
@@ -365,6 +407,17 @@ def update_highlight(
     highlight.note = note
     highlight.updated_at = datetime.utcnow()
 
+    # Convert empty strings to None
+    source_url = source_url.strip() if source_url else None
+    source_title = source_title.strip() if source_title else None
+    source_author = source_author.strip() if source_author else None
+    tags = tags.strip() if tags else None
+    
+    source_url = source_url or None
+    source_title = source_title or None
+    source_author = source_author or None
+    tags = tags or None
+
     highlight.tags.clear()
     if tags:
         tag_names = [t.strip() for t in tags.split(",") if t.strip()]
@@ -380,22 +433,47 @@ def update_highlight(
                 db.flush()
             highlight.tags.append(tag)
 
-    if source_title and source_type:
-        source = (
-            db.query(Source)
-            .filter(
-                Source.user_id == user.id,
-                Source.title == source_title,
-                Source.type == source_type,
+    if source_url or source_title:
+        # Extract domain from URL if provided
+        domain = None
+        if source_url:
+            parsed = urlparse(source_url)
+            domain = parsed.netloc or None
+            
+        # If only URL provided, use domain as title
+        if source_url and not source_title:
+            source_title = domain or source_url
+            
+        # Match by URL if provided, otherwise by title
+        if source_url:
+            source = (
+                db.query(Source)
+                .filter(
+                    Source.user_id == user.id,
+                    Source.url == source_url,
+                )
+                .first()
             )
-            .first()
-        )
+        else:
+            source = (
+                db.query(Source)
+                .filter(
+                    Source.user_id == user.id,
+                    Source.title.ilike(source_title),
+                )
+                .first()
+            )
+
         if not source:
+            # Infer type: if url provided it's web, otherwise book
+            source_type = SourceType.WEB if source_url else SourceType.BOOK
             source = Source(
                 user_id=user.id,
+                url=source_url,
+                domain=domain,
                 title=source_title,
-                type=SourceType(source_type),
                 author=source_author,
+                type=source_type,
             )
             db.add(source)
             db.flush()
@@ -404,11 +482,19 @@ def update_highlight(
         highlight.source_id = None
 
     db.commit()
+    db.refresh(highlight)
+
+    if is_htmx(request):
+        return HTMLResponse(
+            '<div style="padding: 15px; background: #d4edda; border-radius: 4px; margin-bottom: 20px;">'
+            "Changes saved successfully!</div>"
+        )
     return RedirectResponse(url=f"/highlights/{highlight_id}", status_code=303)
 
 
 @app.put("/highlights/{highlight_id}/favorite")
 def toggle_favorite(
+    request: Request,
     highlight_id: str,
     user: User = Depends(require_user),
     db: Session = Depends(get_db),
@@ -418,14 +504,24 @@ def toggle_favorite(
         .filter(Highlight.id == highlight_id, Highlight.user_id == user.id)
         .first()
     )
-    if highlight:
-        highlight.is_favorite = not highlight.is_favorite
-        db.commit()
+    if not highlight:
+        raise HTTPException(status_code=404)
+
+    highlight.is_favorite = not highlight.is_favorite
+    db.commit()
+
+    if is_htmx(request):
+        return HTMLResponse(
+            f'<button hx-put="/highlights/{highlight_id}/favorite" '
+            f'hx-target="this" hx-swap="outerHTML" class="secondary">'
+            f"{'★ Favorited' if highlight.is_favorite else '☆ Favorite'}</button>"
+        )
     return RedirectResponse(url=f"/highlights/{highlight_id}", status_code=303)
 
 
 @app.delete("/highlights/{highlight_id}")
 def delete_highlight(
+    request: Request,
     highlight_id: str,
     user: User = Depends(require_user),
     db: Session = Depends(get_db),
@@ -435,13 +531,22 @@ def delete_highlight(
         .filter(Highlight.id == highlight_id, Highlight.user_id == user.id)
         .first()
     )
-    if highlight:
-        highlight.status = (
-            HighlightStatus.ARCHIVED
-            if highlight.status == HighlightStatus.ACTIVE
-            else HighlightStatus.ACTIVE
+    if not highlight:
+        raise HTTPException(status_code=404)
+
+    highlight.status = (
+        HighlightStatus.ARCHIVED
+        if highlight.status == HighlightStatus.ACTIVE
+        else HighlightStatus.ACTIVE
+    )
+    db.commit()
+
+    if is_htmx(request):
+        return HTMLResponse(
+            '<div style="padding: 15px; background: #d4edda; border-radius: 4px; margin-bottom: 20px;">'
+            f"Highlight {'archived' if highlight.status == HighlightStatus.ARCHIVED else 'restored'}. "
+            '<a href="/highlights">View all highlights</a></div>'
         )
-        db.commit()
     return RedirectResponse(url="/highlights", status_code=303)
 
 
@@ -457,6 +562,39 @@ def sources_page(
     return templates.TemplateResponse(
         "sources.html",
         {"request": request, "sources": sources, "current_user": user},
+    )
+
+
+@app.get("/sources/{source_id}", response_class=HTMLResponse)
+def source_detail(
+    source_id: str,
+    request: Request,
+    user: User = Depends(require_user),
+    db: Session = Depends(get_db),
+):
+    source = (
+        db.query(Source)
+        .filter(Source.id == source_id, Source.user_id == user.id)
+        .first()
+    )
+    if not source:
+        raise HTTPException(status_code=404, detail="Source not found")
+
+    highlights = (
+        db.query(Highlight)
+        .filter(Highlight.source_id == source_id, Highlight.user_id == user.id)
+        .order_by(Highlight.created_at.desc())
+        .all()
+    )
+
+    return templates.TemplateResponse(
+        "source_detail.html",
+        {
+            "request": request,
+            "source": source,
+            "highlights": highlights,
+            "current_user": user,
+        },
     )
 
 
@@ -486,14 +624,25 @@ def search_page(
             query = query.join(Source).filter(Source.type == source_type)
 
         if status:
-            from app.models import HighlightStatus
-
             query = query.filter(Highlight.status == HighlightStatus(status))
 
         if favorite == "true":
             query = query.filter(Highlight.is_favorite == True)
 
         results = query.order_by(Highlight.created_at.desc()).all()
+
+    if is_htmx(request):
+        return templates.TemplateResponse(
+            "partials/search_results.html",
+            {
+                "request": request,
+                "results": results,
+                "query": q,
+                "source_type": source_type,
+                "status": status,
+                "favorite": favorite,
+            },
+        )
 
     return templates.TemplateResponse(
         "search.html",
@@ -507,3 +656,187 @@ def search_page(
             "current_user": user,
         },
     )
+
+
+# Collections endpoints
+@app.get("/collections", response_class=HTMLResponse)
+def list_collections(
+    request: Request, user: User = Depends(require_user), db: Session = Depends(get_db)
+):
+    collections = (
+        db.query(Collection)
+        .filter(Collection.user_id == user.id)
+        .order_by(Collection.created_at.desc())
+        .all()
+    )
+    return templates.TemplateResponse(
+        "collections.html",
+        {"request": request, "collections": collections, "current_user": user},
+    )
+
+
+@app.post("/collections")
+def create_collection(
+    request: Request,
+    name: str = Form(),
+    description: Optional[str] = Form(None),
+    user: User = Depends(require_user),
+    db: Session = Depends(get_db),
+):
+    collection = Collection(
+        user_id=user.id,
+        name=name,
+        description=description,
+    )
+    db.add(collection)
+    db.commit()
+    db.refresh(collection)
+
+    if is_htmx(request):
+        return templates.TemplateResponse(
+            "partials/collection_item.html",
+            {"request": request, "collection": collection},
+        )
+    return RedirectResponse(url="/collections", status_code=303)
+
+
+@app.get("/collections/{collection_id}", response_class=HTMLResponse)
+def get_collection(
+    collection_id: str,
+    request: Request,
+    user: User = Depends(require_user),
+    db: Session = Depends(get_db),
+):
+    collection = (
+        db.query(Collection)
+        .filter(Collection.id == collection_id, Collection.user_id == user.id)
+        .first()
+    )
+    if not collection:
+        raise HTTPException(status_code=404, detail="Collection not found")
+
+    return templates.TemplateResponse(
+        "collection_detail.html",
+        {"request": request, "collection": collection, "current_user": user},
+    )
+
+
+@app.patch("/collections/{collection_id}")
+def update_collection(
+    collection_id: str,
+    request: Request,
+    name: str = Form(),
+    description: Optional[str] = Form(None),
+    user: User = Depends(require_user),
+    db: Session = Depends(get_db),
+):
+    collection = (
+        db.query(Collection)
+        .filter(Collection.id == collection_id, Collection.user_id == user.id)
+        .first()
+    )
+    if not collection:
+        raise HTTPException(status_code=404, detail="Collection not found")
+
+    collection.name = name
+    collection.description = description
+    db.commit()
+
+    if is_htmx(request):
+        return HTMLResponse(
+            '<div style="padding: 15px; background: #d4edda; border-radius: 4px; margin-bottom: 20px;">'
+            "Collection updated successfully!</div>"
+        )
+    return RedirectResponse(url=f"/collections/{collection_id}", status_code=303)
+
+
+@app.delete("/collections/{collection_id}")
+def delete_collection(
+    collection_id: str,
+    user: User = Depends(require_user),
+    db: Session = Depends(get_db),
+):
+    collection = (
+        db.query(Collection)
+        .filter(Collection.id == collection_id, Collection.user_id == user.id)
+        .first()
+    )
+    if not collection:
+        raise HTTPException(status_code=404, detail="Collection not found")
+
+    db.delete(collection)
+    db.commit()
+    return {"status": "deleted"}
+
+
+@app.post("/collections/{collection_id}/highlights/{highlight_id}")
+def add_highlight_to_collection(
+    collection_id: str,
+    highlight_id: str,
+    user: User = Depends(require_user),
+    db: Session = Depends(get_db),
+):
+    collection = (
+        db.query(Collection)
+        .filter(Collection.id == collection_id, Collection.user_id == user.id)
+        .first()
+    )
+    if not collection:
+        raise HTTPException(status_code=404, detail="Collection not found")
+
+    highlight = (
+        db.query(Highlight)
+        .filter(Highlight.id == highlight_id, Highlight.user_id == user.id)
+        .first()
+    )
+    if not highlight:
+        raise HTTPException(status_code=404, detail="Highlight not found")
+
+    # Check if already in collection
+    existing = (
+        db.query(CollectionItem)
+        .filter(
+            CollectionItem.collection_id == collection_id,
+            CollectionItem.highlight_id == highlight_id,
+        )
+        .first()
+    )
+    if existing:
+        return {"status": "already_exists"}
+
+    # Add to collection
+    collection.highlights.append(highlight)
+    db.commit()
+    return {"status": "added"}
+
+
+@app.delete("/collections/{collection_id}/highlights/{highlight_id}")
+def remove_highlight_from_collection(
+    collection_id: str,
+    highlight_id: str,
+    user: User = Depends(require_user),
+    db: Session = Depends(get_db),
+):
+    collection = (
+        db.query(Collection)
+        .filter(Collection.id == collection_id, Collection.user_id == user.id)
+        .first()
+    )
+    if not collection:
+        raise HTTPException(status_code=404, detail="Collection not found")
+
+    highlight = (
+        db.query(Highlight)
+        .filter(Highlight.id == highlight_id, Highlight.user_id == user.id)
+        .first()
+    )
+    if not highlight:
+        raise HTTPException(status_code=404, detail="Highlight not found")
+
+    # Remove from collection
+    if highlight in collection.highlights:
+        collection.highlights.remove(highlight)
+        db.commit()
+        return {"status": "removed"}
+    
+    return {"status": "not_found"}

@@ -10,6 +10,7 @@ from sqlalchemy import (
     Date,
     Enum as SQLEnum,
     Index,
+    text,
 )
 from sqlalchemy.dialects.postgresql import UUID, JSONB, ARRAY
 from sqlalchemy.orm import relationship
@@ -20,14 +21,7 @@ from app.database import Base
 
 class SourceType(str, enum.Enum):
     BOOK = "book"
-    ARTICLE = "article"
     WEB = "web"
-    PDF = "pdf"
-    VIDEO = "video"
-    PODCAST = "podcast"
-    TWEET = "tweet"
-    NOTE = "note"
-    OTHER = "other"
 
 
 class LinkType(str, enum.Enum):
@@ -86,13 +80,11 @@ class Source(Base):
     user_id = Column(
         UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
     )
-    type = Column(SQLEnum(SourceType), nullable=False)
-    title = Column(Text, nullable=False)
+    url = Column(Text, nullable=True)  # for web/twitter/arxiv
+    domain = Column(Text, nullable=True)  # auto-extracted from url (e.g. "example.com")
+    title = Column(Text, nullable=True)  # for books or article titles
     author = Column(Text, nullable=True)
-    url = Column(Text, nullable=True)
-    publisher = Column(Text, nullable=True)
-    published_at = Column(Date, nullable=True)
-    source_metadata = Column(JSONB, nullable=True, default={})
+    type = Column(SQLEnum(SourceType), nullable=True)  # hint/filter only
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(
         DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False
@@ -102,9 +94,9 @@ class Source(Base):
     highlights = relationship("Highlight", back_populates="source")
 
     __table_args__ = (
-        Index("ix_sources_user_type", "user_id", "type"),
-        Index("ix_sources_user_title", "user_id", "title"),
-        Index("ix_sources_metadata", "source_metadata", postgresql_using="gin"),
+        Index("ix_sources_user_url", "user_id", "url"),
+        Index("ix_sources_user_title_lower", "user_id", text("lower(title)")),
+        Index("ix_sources_user_domain", "user_id", "domain"),
     )
 
 

@@ -123,7 +123,26 @@
             font-size: 14px;
             margin-top: 5px;
         }
+
+        .htmx-indicator {
+            display: none;
+        }
+
+        .htmx-request .htmx-indicator {
+            display: inline-block;
+        }
+
+        .htmx-swapping {
+            opacity: 0;
+            transition: opacity 200ms ease-out;
+        }
+
+        .htmx-settling {
+            opacity: 1;
+            transition: opacity 200ms ease-in;
+        }
     </style>
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
 </head>
 
 <body>
@@ -134,6 +153,7 @@
             <nav>
                 <a href="/highlights">Highlights</a>
                 <a href="/sources">Sources</a>
+                <a href="/collections">Collections</a>
                 <a href="/search">Search</a>
                 <a href="/settings">Settings</a>
                 <a href="/logout">Logout ({{ current_user.username }})</a>

@@ -117,7 +117,7 @@ A personal highlight manager that captures highlights across media, preserves so
 
 ### Enums
 
-* `source_type`: `book | article | web | pdf | video | podcast | tweet | note | other`
+* `source_type`: `book | web`
 * `link_type`: `related | supports | contradicts | example | expands`
 * `highlight_status`: `active | archived`
 * `auth_type`: `ui_session | device_key`
@@ -148,17 +148,17 @@ Indexes: `(user_id)`, `(api_key_hash)`
 
 * `id` uuid pk
 * `user_id` fk
-* `type` source_type
-* `title` text required
+* `url` text nullable (for web/twitter/arxiv - used for matching if present)
+* `domain` text nullable (auto-extracted from url - e.g. "example.com")
+* `title` text nullable (for books or article titles - used for matching if url absent)
 * `author` text nullable
-* `url` text nullable
-* `publisher` text nullable
-* `published_at` date nullable
-* `metadata` jsonb
+* `type` source_type nullable (book | web - hint/filter only)
 * `created_at`
 * `updated_at`
 
-Indexes: `(user_id, type)`, `(user_id, title)`, `gin(metadata)`
+Constraints: At least one of `url` or `title` must be provided
+Matching logic: If `url` provided → match by url (exact), else → match by title (case-insensitive)
+Indexes: `(user_id, url)`, `(user_id, lower(title))`, `(user_id, domain)`
 
 #### `highlights`
 
@@ -266,8 +266,9 @@ Search: Postgres FTS index on `(text, note)` via `tsvector`
 * `PUT /highlights/{id}/favorite` - toggle favorite status *(UI only)*
 
 **Device API** (same endpoint, device key auth):
-* `POST /highlights` - simplified ingest
-  * Form fields: `text` (required), `note`, `tags` (csv), `source_title`, `source_type`, `source_author`, `location` (json)
+* `POST /api/highlights` - simplified ingest
+  * Form fields: `text` (required), `note`, `tags` (csv), `source_url`, `source_title`, `source_author`, `location` (json)
+  * Source matching: if `source_url` provided, match by URL; otherwise match by `source_title`
 
 ### Sources
 

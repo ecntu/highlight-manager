@@ -3,7 +3,7 @@
 {% block content %}
 <div class="card">
     <h2 style="margin-bottom: 15px;">Quick Add</h2>
-    <form method="post" action="/highlights">
+    <form hx-post="/highlights" hx-target="#highlights-list" hx-swap="afterbegin" hx-on::after-request="this.reset()">
         <div class="form-group">
             <textarea name="text" rows="4" placeholder="Paste your highlight here..." required autofocus></textarea>
         </div>
@@ -11,37 +11,24 @@
             <input type="text" name="tags" placeholder="Tags (comma-separated)" style="flex: 1;">
             <input type="text" name="note" placeholder="Note (optional)" style="flex: 1;">
         </div>
-        <button type="submit" style="margin-top: 10px;">Save Highlight</button>
+        <div style="display: flex; gap: 10px; margin-top: 10px;">
+            <input type="text" name="source_url" placeholder="Source URL (for web sources)" style="flex: 1;">
+            <input type="text" name="source_title" placeholder="Source title (for books)" style="flex: 1;">
+        </div>
+        <button type="submit" style="margin-top: 10px;">
+            Save Highlight
+            <span class="htmx-indicator">...</span>
+        </button>
     </form>
 </div>
 
 <div class="card">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
         <h2>Recent Highlights</h2>
-        <small style="color: #666;">{{ highlights|length }} highlights</small>
+        <small style="color: #666;" id="highlights-count">{{ highlights|length }} highlights</small>
     </div>
-    {% if highlights %}
-    {% for highlight in highlights %}
-    <div style="border-bottom: 1px solid #eee; padding: 15px 0; cursor: pointer;"
-        onclick="window.location='/highlights/{{ highlight.id }}'">
-        <p style="margin-bottom: 8px; line-height: 1.5;">{{ highlight.text }}</p>
-        <div style="display: flex; gap: 15px; align-items: center;">
-            <small style="color: #666;">{{ highlight.created_at.strftime('%b %d, %Y') }}</small>
-            {% if highlight.source %}
-            <small style="color: #4a90e2;">📚 {{ highlight.source.title }}</small>
-            {% endif %}
-            {% if highlight.tags %}
-            <small style="color: #888;">
-                {% for tag in highlight.tags %}
-                #{{ tag.name }}{% if not loop.last %}, {% endif %}
-                {% endfor %}
-            </small>
-            {% endif %}
-        </div>
+    <div id="highlights-list">
+        {% include "partials/highlights_list.html" %}
     </div>
-    {% endfor %}
-    {% else %}
-    <p style="color: #666; text-align: center; padding: 40px 0;">No highlights yet. Add your first one above!</p>
-    {% endif %}
 </div>
 {% endblock %}

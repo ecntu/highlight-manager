@@ -13,61 +13,39 @@
     </div>
     {% endif %}
 
-    <form method="post" action="/devices" style="margin-bottom: 30px;">
+    <form hx-post="/devices" hx-target="#devices-table" hx-swap="outerHTML" style="margin-bottom: 30px;">
         <div style="display: flex; gap: 10px;">
             <input type="text" name="name" placeholder="Device name (e.g., iPhone, MacBook)" required style="flex: 1;">
-            <button type="submit">Create Device Key</button>
+            <button type="submit">
+                Create Device Key
+                <span class="htmx-indicator">...</span>
+            </button>
         </div>
     </form>
 
     <h3 style="margin-bottom: 15px; font-size: 16px;">Active Devices</h3>
-    {% if devices %}
-    <table style="width: 100%; border-collapse: collapse;">
-        <thead>
-            <tr style="border-bottom: 2px solid #e0e0e0;">
-                <th style="text-align: left; padding: 10px 0;">Name</th>
-                <th style="text-align: left; padding: 10px 0;">Created</th>
-                <th style="text-align: left; padding: 10px 0;">Last Used</th>
-                <th style="text-align: left; padding: 10px 0;"></th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for device in devices %}
-            <tr style="border-bottom: 1px solid #f0f0f0;">
-                <td style="padding: 12px 0;">{{ device.name }}</td>
-                <td style="padding: 12px 0; color: #666;">{{ device.created_at.strftime('%b %d, %Y') }}</td>
-                <td style="padding: 12px 0; color: #666;">
-                    {% if device.last_used_at %}
-                    {{ device.last_used_at.strftime('%b %d, %Y') }}
-                    {% else %}
-                    Never
-                    {% endif %}
-                </td>
-                <td style="padding: 12px 0; text-align: right;">
-                    <form method="post" action="/devices/{{ device.id }}?_method=DELETE" style="display: inline;">
-                        <button type="submit" class="secondary"
-                            style="padding: 6px 12px; font-size: 13px;">Revoke</button>
-                    </form>
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-    {% else %}
-    <p style="color: #666;">No devices yet. Create one above to start capturing highlights from other devices.</p>
-    {% endif %}
+    <div id="devices-table">
+        {% include "partials/devices_table.html" %}
+    </div>
 </div>
 
 <div class="card">
     <h2 style="margin-bottom: 10px;">Using Device Keys</h2>
     <p style="color: #666; margin-bottom: 15px;">Send highlights from any device using:</p>
-    <pre style="background: #f5f5f5; padding: 15px; border-radius: 4px; overflow-x: auto; font-size: 13px;">curl -X POST {{ request.url.scheme }}://{{ request.url.netloc }}/api/ingest/highlight \
+    <pre style="background: #f5f5f5; padding: 15px; border-radius: 4px; overflow-x: auto; font-size: 13px;">curl -X POST {{ request.url.scheme }}://{{ request.url.netloc }}/api/highlights \
   -H "Authorization: Bearer YOUR_API_KEY" \
   -F "text=Your highlight text" \
   -F "note=Optional note" \
   -F "tags=tag1,tag2" \
+  -F "source_url=https://example.com/article" \
+  -F "source_title=Article Title" \
+  -F "source_author=Author Name"
+
+# For books, use title instead of URL:
+curl -X POST {{ request.url.scheme }}://{{ request.url.netloc }}/api/highlights \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -F "text=Your highlight text" \
   -F "source_title=Book Title" \
-  -F "source_type=book" \
   -F "source_author=Author Name"</pre>
 </div>
 {% endblock %}

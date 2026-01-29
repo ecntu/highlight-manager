@@ -1,0 +1,17 @@
+<div style="border-bottom: 1px solid #eee; padding: 15px 0; cursor: pointer;"
+    onclick="window.location='/highlights/{{ highlight.id }}'">
+    <p style="margin-bottom: 8px; line-height: 1.5;">{{ highlight.text }}</p>
+    <div style="display: flex; gap: 15px; align-items: center;">
+        <small style="color: #666;">{{ highlight.created_at.strftime('%b %d, %Y') }}</small>
+        {% if highlight.source %}
+        <small style="color: #4a90e2;">📚 {{ highlight.source.title }}</small>
+        {% endif %}
+        {% if highlight.tags %}
+        <small style="color: #888;">
+            {% for tag in highlight.tags %}
+            #{{ tag.name }}{% if not loop.last %}, {% endif %}
+            {% endfor %}
+        </small>
+        {% endif %}
+    </div>
+</div>
