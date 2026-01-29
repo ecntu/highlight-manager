@@ -48,7 +48,8 @@
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
             <div class="form-group">
                 <label>Source URL (for web sources)</label>
-                <input type="text" name="source_url" value="{{ highlight.source.url if highlight.source and highlight.source.url else '' }}"
+                <input type="text" name="source_url"
+                    value="{{ highlight.source.url if highlight.source and highlight.source.url else '' }}"
                     placeholder="https://example.com/article">
             </div>
 
@@ -84,12 +85,13 @@
     {% if highlight.collections %}
     <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 15px;">
         {% for collection in highlight.collections %}
-        <div style="display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; background: #e7f3ff; border-radius: 4px; font-size: 14px;">
+        <div
+            style="display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; background: #e7f3ff; border-radius: 4px; font-size: 14px;">
             <a href="/collections/{{ collection.id }}" style="color: #007bff; text-decoration: none;">
                 {{ collection.name }}
             </a>
-            <button hx-delete="/collections/{{ collection.id }}/highlights/{{ highlight.id }}"
-                hx-target="closest div" hx-swap="outerHTML"
+            <button hx-delete="/collections/{{ collection.id }}/highlights/{{ highlight.id }}" hx-target="closest div"
+                hx-swap="outerHTML"
                 style="background: none; border: none; color: #dc3545; cursor: pointer; font-size: 16px; padding: 0; line-height: 1;">
                 ×
             </button>
@@ -125,52 +127,52 @@
 </div>
 
 <script>
-// Load available collections when details is opened
-document.querySelector('details').addEventListener('toggle', function(e) {
-    if (e.target.open) {
-        fetch('/collections')
-            .then(r => r.text())
-            .then(html => {
-                const parser = new DOMParser();
-                const doc = parser.parseFromString(html, 'text/html');
-                const collectionsData = [{% for c in highlight.collections %}'{{ c.id }}'{% if not loop.last %}, {% endif %}{% endfor %}];
-                const highlightId = '{{ highlight.id }}';
-                
-                // Get all collections from the page
-                const allCollections = doc.querySelectorAll('#collections-list > div > div');
-                const container = document.getElementById('add-to-collection');
-                
-                if (allCollections.length === 0) {
-                    container.innerHTML = '<p style="color: #666; font-size: 14px;">No collections yet. <a href="/collections" style="color: #007bff;">Create one first</a>.</p>';
-                } else {
-                    let html = '<div style="display: flex; flex-direction: column; gap: 8px;">';
-                    allCollections.forEach(col => {
-                        const link = col.querySelector('a[href^="/collections/"]');
-                        const collectionId = link.href.split('/').pop();
-                        const collectionName = link.textContent.trim();
-                        const isInCollection = collectionsData.includes(collectionId);
-                        
-                        if (!isInCollection) {
-                            html += `<button onclick="addToCollection('${collectionId}', '${highlightId}')" 
+    // Load available collections when details is opened
+    document.querySelector('details').addEventListener('toggle', function (e) {
+        if (e.target.open) {
+            fetch('/collections')
+                .then(r => r.text())
+                .then(html => {
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(html, 'text/html');
+                    const collectionsData = [{% for c in highlight.collections %}'{{ c.id }}'{% if not loop.last %}, {% endif %} {% endfor %}];
+        const highlightId = '{{ highlight.id }}';
+
+        // Get all collections from the page
+        const allCollections = doc.querySelectorAll('#collections-list > div > div');
+        const container = document.getElementById('add-to-collection');
+
+        if (allCollections.length === 0) {
+            container.innerHTML = '<p style="color: #666; font-size: 14px;">No collections yet. <a href="/collections" style="color: #007bff;">Create one first</a>.</p>';
+        } else {
+            let html = '<div style="display: flex; flex-direction: column; gap: 8px;">';
+            allCollections.forEach(col => {
+                const link = col.querySelector('a[href^="/collections/"]');
+                const collectionId = link.href.split('/').pop();
+                const collectionName = link.textContent.trim();
+                const isInCollection = collectionsData.includes(collectionId);
+
+                if (!isInCollection) {
+                    html += `<button onclick="addToCollection('${collectionId}', '${highlightId}')" 
                                 style="padding: 8px 12px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; text-align: left; font-size: 14px;">
                                 + ${collectionName}
                             </button>`;
-                        }
-                    });
-                    html += '</div>';
-                    container.innerHTML = html;
                 }
             });
+            html += '</div>';
+            container.innerHTML = html;
+        }
+    });
     }
 });
 
-function addToCollection(collectionId, highlightId) {
-    fetch(`/collections/${collectionId}/highlights/${highlightId}`, {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'}
-    })
-    .then(r => r.json())
-    .then(() => window.location.reload());
-}
+    function addToCollection(collectionId, highlightId) {
+        fetch(`/collections/${collectionId}/highlights/${highlightId}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        })
+            .then(r => r.json())
+            .then(() => window.location.reload());
+    }
 </script>
 {% endblock %}

@@ -16,10 +16,11 @@ from app.models import (
 def init_db():
     # Drop and recreate sources table to match new schema
     from sqlalchemy import text
+
     with engine.connect() as conn:
         conn.execute(text("DROP TABLE IF EXISTS sources CASCADE"))
         conn.commit()
-    
+
     Base.metadata.create_all(bind=engine)
 
 

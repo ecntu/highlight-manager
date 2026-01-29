@@ -9,7 +9,17 @@ from urllib.parse import urlparse
 import secrets
 from typing import Optional
 from app.database import get_db
-from app.models import User, Highlight, Device, Source, Tag, SourceType, HighlightStatus, Collection, CollectionItem
+from app.models import (
+    User,
+    Highlight,
+    Device,
+    Source,
+    Tag,
+    SourceType,
+    HighlightStatus,
+    Collection,
+    CollectionItem,
+)
 from app.auth import hash_password, verify_password
 from app.config import settings
 
@@ -54,11 +64,11 @@ def create_highlight_with_metadata(
         if source_url:
             parsed = urlparse(source_url)
             domain = parsed.netloc or None
-            
+
         # If only URL provided, use domain as title
         if source_url and not source_title:
             source_title = domain or source_url
-        
+
         # Match by URL if provided, otherwise by title
         if source_url:
             source = (
@@ -208,7 +218,7 @@ def create_highlight(
     source_author = source_author.strip() if source_author else None
     tags = tags.strip() if tags else None
     note = note.strip() if note else None
-    
+
     highlight = create_highlight_with_metadata(
         user_id=user.id,
         text=text,
@@ -412,7 +422,7 @@ def update_highlight(
     source_title = source_title.strip() if source_title else None
     source_author = source_author.strip() if source_author else None
     tags = tags.strip() if tags else None
-    
+
     source_url = source_url or None
     source_title = source_title or None
     source_author = source_author or None
@@ -439,11 +449,11 @@ def update_highlight(
         if source_url:
             parsed = urlparse(source_url)
             domain = parsed.netloc or None
-            
+
         # If only URL provided, use domain as title
         if source_url and not source_title:
             source_title = domain or source_url
-            
+
         # Match by URL if provided, otherwise by title
         if source_url:
             source = (
@@ -838,5 +848,5 @@ def remove_highlight_from_collection(
         collection.highlights.remove(highlight)
         db.commit()
         return {"status": "removed"}
-    
+
     return {"status": "not_found"}
