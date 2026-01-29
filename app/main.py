@@ -46,6 +46,30 @@ def is_htmx(request: Request) -> bool:
     return request.headers.get("HX-Request") == "true"
 
 
+def normalize_url(url: str) -> str:
+    """Add http:// scheme if missing from URL."""
+    if url and not url.startswith(("http://", "https://")):
+        return f"http://{url}"
+    return url
+
+
+def cleanup_orphaned_sources(user_id: str, db: Session):
+    """Delete sources that have no active highlights."""
+    orphaned = (
+        db.query(Source)
+        .outerjoin(Highlight, Source.id == Highlight.source_id)
+        .filter(
+            Source.user_id == user_id,
+            Highlight.id == None,
+        )
+        .all()
+    )
+    for source in orphaned:
+        db.delete(source)
+    if orphaned:
+        db.commit()
+
+
 def create_highlight_with_metadata(
     user_id: str,
     text: str,
@@ -59,9 +83,10 @@ def create_highlight_with_metadata(
 ) -> Highlight:
     source_id = None
     if source_url or source_title:
-        # Extract domain from URL if provided
+        # Normalize URL (add scheme if missing) and extract domain
         domain = None
         if source_url:
+            source_url = normalize_url(source_url)
             parsed = urlparse(source_url)
             domain = parsed.netloc or None
 
@@ -444,9 +469,10 @@ def update_highlight(
             highlight.tags.append(tag)
 
     if source_url or source_title:
-        # Extract domain from URL if provided
+        # Normalize URL (add scheme if missing) and extract domain
         domain = None
         if source_url:
+            source_url = normalize_url(source_url)
             parsed = urlparse(source_url)
             domain = parsed.netloc or None
 
@@ -544,12 +570,17 @@ def delete_highlight(
     if not highlight:
         raise HTTPException(status_code=404)
 
+    source_id = highlight.source_id
     highlight.status = (
         HighlightStatus.ARCHIVED
         if highlight.status == HighlightStatus.ACTIVE
         else HighlightStatus.ACTIVE
     )
     db.commit()
+
+    # Cleanup orphaned sources if this was the last highlight
+    if highlight.status == HighlightStatus.ARCHIVED and source_id:
+        cleanup_orphaned_sources(user.id, db)
 
     if is_htmx(request):
         return HTMLResponse(
