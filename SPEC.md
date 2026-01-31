@@ -148,17 +148,22 @@ Indexes: `(user_id)`, `(api_key_hash)`
 
 * `id` uuid pk
 * `user_id` fk
-* `url` text nullable (for web/twitter/arxiv - used for matching if present)
-* `domain` text nullable (auto-extracted from url - e.g. "example.com")
-* `title` text nullable (for books or article titles - used for matching if url absent)
-* `author` text nullable
-* `type` source_type nullable (book | web - hint/filter only)
+* `domain` text nullable (only for web - e.g. "nytimes.com")
+* `title` text nullable (only for books)
+* `author` text nullable (only for books)
+* `type` source_type required (book | web)
 * `created_at`
 * `updated_at`
 
-Constraints: At least one of `url` or `title` must be provided
-Matching logic: If `url` provided → match by url (exact), else → match by title (case-insensitive)
-Indexes: `(user_id, url)`, `(user_id, lower(title))`, `(user_id, domain)`
+**Design:**
+* **Web sources:** domain-level only (e.g., "nytimes.com"). Individual article URLs stored on highlights.
+* **Book sources:** title + author. Each book is one source.
+
+Matching logic:
+* Web: match by domain (case-insensitive)
+* Book: match by title (case-insensitive)
+
+Indexes: `(user_id, domain)`, `(user_id, title)`
 
 #### `highlights`
 
@@ -168,7 +173,10 @@ Indexes: `(user_id, url)`, `(user_id, lower(title))`, `(user_id, domain)`
 * `device_id` fk nullable (if created via device key)
 * `text` text required
 * `note` text nullable
-* `location` jsonb nullable `{page, chapter, timestamp_seconds, url_fragment}`
+* `url` text nullable (for web highlights - full article URL)
+* `page_title` text nullable (for web highlights - article title)
+* `page_author` text nullable (for web highlights - article author)
+* `location` jsonb nullable `{page, chapter}` (for books only)
 * `status` highlight_status default active
 * `is_favorite` bool default false
 * `created_at`

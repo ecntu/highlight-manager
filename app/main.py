@@ -82,52 +82,66 @@ def create_highlight_with_metadata(
     db: Session,
 ) -> Highlight:
     source_id = None
+    url = None
+    page_title = None
+    page_author = None
+
     if source_url or source_title:
-        # Normalize URL (add scheme if missing) and extract domain
-        domain = None
+        # Web source: extract domain and create/find domain-level source
         if source_url:
             source_url = normalize_url(source_url)
             parsed = urlparse(source_url)
             domain = parsed.netloc or None
 
-        # If only URL provided, use domain as title
-        if source_url and not source_title:
-            source_title = domain or source_url
-
-        # Match by URL if provided, otherwise by title
-        if source_url:
-            source = (
-                db.query(Source)
-                .filter(
-                    Source.user_id == user_id,
-                    Source.url == source_url,
+            if domain:
+                # Find or create domain-level source
+                source = (
+                    db.query(Source)
+                    .filter(
+                        Source.user_id == user_id,
+                        Source.type == SourceType.WEB,
+                        Source.domain == domain,
+                    )
+                    .first()
                 )
-                .first()
-            )
-        else:
+
+                if not source:
+                    source = Source(
+                        user_id=user_id,
+                        domain=domain,
+                        type=SourceType.WEB,
+                    )
+                    db.add(source)
+                    db.flush()
+
+                source_id = source.id
+                url = source_url
+                page_title = source_title
+                page_author = source_author
+
+        # Book source: match by title
+        elif source_title:
             source = (
                 db.query(Source)
                 .filter(
                     Source.user_id == user_id,
+                    Source.type == SourceType.BOOK,
                     Source.title.ilike(source_title),
                 )
                 .first()
             )
 
-        if not source:
-            # Infer type: if url provided it's web, otherwise book
-            source_type = SourceType.WEB if source_url else SourceType.BOOK
-            source = Source(
-                user_id=user_id,
-                url=source_url,
-                domain=domain,
-                title=source_title,
-                author=source_author,
-                type=source_type,
-            )
-            db.add(source)
-            db.flush()
-        source_id = source.id
+            if not source:
+                source = Source(
+                    user_id=user_id,
+                    title=source_title,
+                    author=source_author,
+                    type=SourceType.BOOK,
+                )
+                db.add(source)
+                db.flush()
+
+            source_id = source.id
 
     highlight = Highlight(
         user_id=user_id,
@@ -135,6 +149,9 @@ def create_highlight_with_metadata(
         note=note,
         source_id=source_id,
         device_id=device_id,
+        url=url,
+        page_title=page_title,
+        page_author=page_author,
     )
     db.add(highlight)
     db.flush()

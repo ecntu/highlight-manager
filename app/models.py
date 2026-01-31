@@ -7,12 +7,10 @@ from sqlalchemy import (
     Boolean,
     Integer,
     ForeignKey,
-    Date,
     Enum as SQLEnum,
     Index,
-    text,
+    JSON,
 )
-from sqlalchemy.dialects.postgresql import UUID, JSONB, ARRAY
 from sqlalchemy.orm import relationship
 from datetime import datetime
 import uuid
@@ -40,7 +38,7 @@ class HighlightStatus(str, enum.Enum):
 class User(Base):
     __tablename__ = "users"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     username = Column(String(255), unique=True, nullable=False, index=True)
     password_hash = Column(String(255), nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
@@ -56,9 +54,9 @@ class User(Base):
 class Device(Base):
     __tablename__ = "devices"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     user_id = Column(
-        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+        String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
     )
     name = Column(Text, nullable=False)
     api_key_hash = Column(String(255), unique=True, nullable=False, index=True)
@@ -76,15 +74,15 @@ class Device(Base):
 class Source(Base):
     __tablename__ = "sources"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     user_id = Column(
-        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+        String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
     )
-    url = Column(Text, nullable=True)  # for web/twitter/arxiv
-    domain = Column(Text, nullable=True)  # auto-extracted from url (e.g. "example.com")
-    title = Column(Text, nullable=True)  # for books or article titles
-    author = Column(Text, nullable=True)
-    type = Column(SQLEnum(SourceType), nullable=True)  # hint/filter only
+    # For books: title + author. For web: domain (e.g. "nytimes.com")
+    domain = Column(Text, nullable=True)  # Only for web sources
+    title = Column(Text, nullable=True)  # Only for books
+    author = Column(Text, nullable=True)  # Only for books
+    type = Column(SQLEnum(SourceType), nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(
         DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False
@@ -94,28 +92,32 @@ class Source(Base):
     highlights = relationship("Highlight", back_populates="source")
 
     __table_args__ = (
-        Index("ix_sources_user_url", "user_id", "url"),
-        Index("ix_sources_user_title_lower", "user_id", text("lower(title)")),
         Index("ix_sources_user_domain", "user_id", "domain"),
+        Index("ix_sources_user_title", "user_id", "title"),
     )
 
 
 class Highlight(Base):
     __tablename__ = "highlights"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     user_id = Column(
-        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+        String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
     )
     source_id = Column(
-        UUID(as_uuid=True), ForeignKey("sources.id", ondelete="SET NULL"), nullable=True
+        String(36), ForeignKey("sources.id", ondelete="SET NULL"), nullable=True
     )
     device_id = Column(
-        UUID(as_uuid=True), ForeignKey("devices.id", ondelete="SET NULL"), nullable=True
+        String(36), ForeignKey("devices.id", ondelete="SET NULL"), nullable=True
     )
     text = Column(Text, nullable=False)
     note = Column(Text, nullable=True)
-    location = Column(JSONB, nullable=True)
+    # Web-specific fields (nullable, only used when source.type == 'web')
+    url = Column(Text, nullable=True)  # Full article URL
+    page_title = Column(Text, nullable=True)  # Article title
+    page_author = Column(Text, nullable=True)  # Article author
+    # Location for books: {page, chapter}
+    location = Column(JSON, nullable=True)
     status = Column(
         SQLEnum(HighlightStatus), default=HighlightStatus.ACTIVE, nullable=False
     )
@@ -145,9 +147,9 @@ class Highlight(Base):
 class Tag(Base):
     __tablename__ = "tags"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     user_id = Column(
-        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+        String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
     )
     name = Column(String(255), nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
@@ -164,21 +166,21 @@ class HighlightTag(Base):
     __tablename__ = "highlight_tags"
 
     highlight_id = Column(
-        UUID(as_uuid=True),
+        String(36),
         ForeignKey("highlights.id", ondelete="CASCADE"),
         primary_key=True,
     )
     tag_id = Column(
-        UUID(as_uuid=True), ForeignKey("tags.id", ondelete="CASCADE"), primary_key=True
+        String(36), ForeignKey("tags.id", ondelete="CASCADE"), primary_key=True
     )
 
 
 class Collection(Base):
     __tablename__ = "collections"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     user_id = Column(
-        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+        String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
     )
     name = Column(Text, nullable=False)
     description = Column(Text, nullable=True)
@@ -194,12 +196,12 @@ class CollectionItem(Base):
     __tablename__ = "collection_items"
 
     collection_id = Column(
-        UUID(as_uuid=True),
+        String(36),
         ForeignKey("collections.id", ondelete="CASCADE"),
         primary_key=True,
     )
     highlight_id = Column(
-        UUID(as_uuid=True),
+        String(36),
         ForeignKey("highlights.id", ondelete="CASCADE"),
         primary_key=True,
     )
@@ -209,17 +211,17 @@ class CollectionItem(Base):
 class HighlightLink(Base):
     __tablename__ = "highlight_links"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     user_id = Column(
-        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+        String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
     )
     from_highlight_id = Column(
-        UUID(as_uuid=True),
+        String(36),
         ForeignKey("highlights.id", ondelete="CASCADE"),
         nullable=False,
     )
     to_highlight_id = Column(
-        UUID(as_uuid=True),
+        String(36),
         ForeignKey("highlights.id", ondelete="CASCADE"),
         nullable=False,
     )
@@ -242,10 +244,10 @@ class DigestConfig(Base):
     __tablename__ = "digest_config"
 
     user_id = Column(
-        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
+        String(36), ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
     )
     daily_count = Column(Integer, default=5, nullable=False)
-    tag_focus = Column(ARRAY(Text), default=[], nullable=False)
+    tag_focus = Column(JSON, default=list, nullable=False)
     timezone = Column(String(50), default="America/Detroit", nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(
