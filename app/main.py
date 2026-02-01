@@ -2,7 +2,7 @@ from fastapi import FastAPI, Depends, HTTPException, status, Form, Request, Resp
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import or_
 from datetime import datetime
 from urllib.parse import urlparse
@@ -422,6 +422,11 @@ def get_highlight(
 ):
     highlight = (
         db.query(Highlight)
+        .options(
+            joinedload(Highlight.source),
+            joinedload(Highlight.tags),
+            joinedload(Highlight.collections),
+        )
         .filter(Highlight.id == highlight_id, Highlight.user_id == user.id)
         .first()
     )
@@ -537,10 +542,113 @@ def update_highlight(
     db.commit()
     db.refresh(highlight)
 
+    # Reload with relationships for response
+    highlight = (
+        db.query(Highlight)
+        .options(
+            joinedload(Highlight.source),
+            joinedload(Highlight.tags),
+            joinedload(Highlight.collections),
+        )
+        .filter(Highlight.id == highlight_id)
+        .first()
+    )
+
     if is_htmx(request):
-        return HTMLResponse(
-            '<div style="padding: 15px; background: #d4edda; border-radius: 4px; margin-bottom: 20px;">'
-            "Changes saved successfully!</div>"
+        # Return just the view card wrapped in container
+        card_html = templates.TemplateResponse(
+            "partials/highlight_card.html",
+            {"request": request, "highlight": highlight, "current_user": user},
+        ).body.decode()
+        return HTMLResponse(f'<div id="highlight-container">{card_html}</div>')
+    return RedirectResponse(url=f"/highlights/{highlight_id}", status_code=303)
+
+
+@app.get("/highlights/{highlight_id}/edit", response_class=HTMLResponse)
+def get_highlight_edit(
+    highlight_id: str,
+    request: Request,
+    user: User = Depends(require_user),
+    db: Session = Depends(get_db),
+):
+    highlight = (
+        db.query(Highlight)
+        .options(
+            joinedload(Highlight.source),
+            joinedload(Highlight.tags),
+            joinedload(Highlight.collections),
+        )
+        .filter(Highlight.id == highlight_id, Highlight.user_id == user.id)
+        .first()
+    )
+    if not highlight:
+        raise HTTPException(status_code=404)
+
+    return templates.TemplateResponse(
+        "partials/highlight_edit.html",
+        {"request": request, "highlight": highlight, "current_user": user},
+    )
+
+
+@app.get("/highlights/{highlight_id}/add-tag", response_class=HTMLResponse)
+def get_add_tag_modal(
+    highlight_id: str,
+    request: Request,
+    user: User = Depends(require_user),
+    db: Session = Depends(get_db),
+):
+    highlight = (
+        db.query(Highlight)
+        .filter(Highlight.id == highlight_id, Highlight.user_id == user.id)
+        .first()
+    )
+    if not highlight:
+        raise HTTPException(status_code=404)
+
+    return templates.TemplateResponse(
+        "partials/tag_modal.html",
+        {"request": request, "highlight": highlight, "current_user": user},
+    )
+
+
+@app.post("/highlights/{highlight_id}/tags")
+def add_tag_to_highlight(
+    highlight_id: str,
+    request: Request,
+    tag_name: str = Form(),
+    user: User = Depends(require_user),
+    db: Session = Depends(get_db),
+):
+    highlight = (
+        db.query(Highlight)
+        .options(
+            joinedload(Highlight.source),
+            joinedload(Highlight.tags),
+            joinedload(Highlight.collections),
+        )
+        .filter(Highlight.id == highlight_id, Highlight.user_id == user.id)
+        .first()
+    )
+    if not highlight:
+        raise HTTPException(status_code=404)
+
+    tag_name = tag_name.strip()
+    if tag_name:
+        tag = db.query(Tag).filter(Tag.user_id == user.id, Tag.name == tag_name).first()
+        if not tag:
+            tag = Tag(user_id=user.id, name=tag_name)
+            db.add(tag)
+            db.flush()
+
+        if tag not in highlight.tags:
+            highlight.tags.append(tag)
+            db.commit()
+            db.refresh(highlight)
+
+    if is_htmx(request):
+        return templates.TemplateResponse(
+            "partials/highlight_card.html",
+            {"request": request, "highlight": highlight, "current_user": user},
         )
     return RedirectResponse(url=f"/highlights/{highlight_id}", status_code=303)
 
@@ -554,6 +662,11 @@ def toggle_favorite(
 ):
     highlight = (
         db.query(Highlight)
+        .options(
+            joinedload(Highlight.source),
+            joinedload(Highlight.tags),
+            joinedload(Highlight.collections),
+        )
         .filter(Highlight.id == highlight_id, Highlight.user_id == user.id)
         .first()
     )
@@ -562,12 +675,13 @@ def toggle_favorite(
 
     highlight.is_favorite = not highlight.is_favorite
     db.commit()
+    db.refresh(highlight)
 
     if is_htmx(request):
-        return HTMLResponse(
-            f'<button hx-put="/highlights/{highlight_id}/favorite" '
-            f'hx-target="this" hx-swap="outerHTML" class="secondary">'
-            f"{'★ Favorited' if highlight.is_favorite else '☆ Favorite'}</button>"
+        # Return just the highlight card partial
+        return templates.TemplateResponse(
+            "partials/highlight_card.html",
+            {"request": request, "highlight": highlight, "current_user": user},
         )
     return RedirectResponse(url=f"/highlights/{highlight_id}", status_code=303)
 
@@ -581,6 +695,11 @@ def delete_highlight(
 ):
     highlight = (
         db.query(Highlight)
+        .options(
+            joinedload(Highlight.source),
+            joinedload(Highlight.tags),
+            joinedload(Highlight.collections),
+        )
         .filter(Highlight.id == highlight_id, Highlight.user_id == user.id)
         .first()
     )
@@ -594,16 +713,17 @@ def delete_highlight(
         else HighlightStatus.ACTIVE
     )
     db.commit()
+    db.refresh(highlight)
 
     # Cleanup orphaned sources if this was the last highlight
     if highlight.status == HighlightStatus.ARCHIVED and source_id:
         cleanup_orphaned_sources(user.id, db)
 
     if is_htmx(request):
-        return HTMLResponse(
-            '<div style="padding: 15px; background: #d4edda; border-radius: 4px; margin-bottom: 20px;">'
-            f"Highlight {'archived' if highlight.status == HighlightStatus.ARCHIVED else 'restored'}. "
-            '<a href="/highlights">View all highlights</a></div>'
+        # Return just the highlight card partial
+        return templates.TemplateResponse(
+            "partials/highlight_card.html",
+            {"request": request, "highlight": highlight, "current_user": user},
         )
     return RedirectResponse(url="/highlights", status_code=303)
 
@@ -654,6 +774,57 @@ def source_detail(
             "current_user": user,
         },
     )
+
+
+# Quick search for nav dropdown
+@app.get("/api/search-quick", response_class=HTMLResponse)
+def search_quick(
+    request: Request,
+    q: Optional[str] = None,
+    user: User = Depends(require_user),
+    db: Session = Depends(get_db),
+):
+    results = []
+    if q and len(q.strip()) >= 2:
+        search_term = f"%{q}%"
+        results = (
+            db.query(Highlight)
+            .filter(
+                Highlight.user_id == user.id,
+                or_(
+                    Highlight.text.ilike(search_term),
+                    Highlight.note.ilike(search_term),
+                    Highlight.page_title.ilike(search_term),
+                ),
+            )
+            .order_by(Highlight.created_at.desc())
+            .limit(5)
+            .all()
+        )
+
+    if not results:
+        return ""
+
+    # Return dropdown HTML
+    html = ""
+    for h in results:
+        preview = h.text[:100] + "..." if len(h.text) > 100 else h.text
+        html += f"""
+        <a href="/highlights/{h.id}" class="search-dropdown-item" style="text-decoration: none; color: inherit; display: block;">
+            <div style="font-size: 13px; color: #666; margin-bottom: 4px;">
+                {h.source.domain if h.source and h.source.type.value == "web" else (h.source.title if h.source else "No source")}
+            </div>
+            <div style="font-size: 14px; color: #1a1a1a;">{preview}</div>
+        </a>
+        """
+
+    html += f"""
+    <div class="search-dropdown-footer">
+        <a href="/search?q={q}">See all results →</a>
+    </div>
+    """
+
+    return html
 
 
 @app.get("/search", response_class=HTMLResponse)

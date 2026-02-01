@@ -4,37 +4,142 @@
 
 {% block content %}
 <div class="card">
-    <h2 style="margin-bottom: 20px;">Sources</h2>
-    <p style="color: #666; margin-bottom: 20px;">Sources are books, articles, websites, and other media where your
-        highlights come from.</p>
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+        <h2 style="margin: 0;">Sources</h2>
+
+        <!-- Filters -->
+        <div style="display: flex; gap: 12px; align-items: center;">
+            <select id="type-filter" style="padding: 6px 10px; font-size: 13px; border-radius: 6px; width: auto;">
+                <option value="">All Types</option>
+                <option value="book">Books</option>
+                <option value="web">Web</option>
+                <option value="article">Articles</option>
+                <option value="podcast">Podcasts</option>
+            </select>
+
+            <select id="favorites-filter" style="padding: 6px 10px; font-size: 13px; border-radius: 6px; width: auto;">
+                <option value="">All Sources</option>
+                <option value="favorites">Has Favorites</option>
+            </select>
+
+            <select id="sort-by" style="padding: 6px 10px; font-size: 13px; border-radius: 6px; width: auto;">
+                <option value="recent-desc">Recent First</option>
+                <option value="recent-asc">Oldest First</option>
+                <option value="highlights-desc">Most Highlights</option>
+                <option value="highlights-asc">Least Highlights</option>
+                <option value="favorites-desc">Most Favorites</option>
+                <option value="favorites-asc">Least Favorites</option>
+            </select>
+        </div>
+    </div>
 
     {% if sources %}
-    <div style="display: grid; gap: 15px;">
+    <div id="sources-list" style="display: grid; gap: 12px;">
         {% for source in sources %}
-        <div style="border: 1px solid #e0e0e0; padding: 15px; border-radius: 4px; cursor: pointer;"
-            onclick="window.location='/sources/{{ source.id }}'">
-            <div style="display: flex; justify-content: space-between; align-items: start;">
-                <div style="flex: 1;">
-                    <h3 style="font-size: 16px; margin-bottom: 5px;">{{ source.title }}</h3>
+        <div style="border: 1px solid #e5e5e5; padding: 16px; border-radius: 8px; cursor: pointer; transition: all 0.15s;"
+            data-type="{{ source.type.value }}" data-highlights="{{ source.highlights|length }}"
+            data-favorites="{{ source.highlights|selectattr('is_favorite')|list|length }}"
+            onclick="window.location='/sources/{{ source.id }}'"
+            onmouseover="this.style.borderColor='#d1d5db'; this.style.background='#fafafa';"
+            onmouseout="this.style.borderColor='#e5e5e5'; this.style.background='white';">
+            <div style="display: flex; justify-content: space-between; align-items: start; gap: 16px;">
+                <div style="flex: 1; min-width: 0;">
+                    <h3 style="font-size: 15px; margin-bottom: 6px; font-weight: 600;">{{ source.title }}</h3>
                     {% if source.author %}
-                    <p style="color: #666; font-size: 14px; margin-bottom: 5px;">by {{ source.author }}</p>
+                    <p style="color: #6b7280; font-size: 13px; margin-bottom: 8px;">{{ source.author }}</p>
                     {% endif %}
-                    <div style="display: flex; gap: 15px; font-size: 13px; color: #888;">
+                    <div style="display: flex; gap: 12px; font-size: 13px; color: #9ca3af; align-items: center;">
                         <span style="text-transform: capitalize;">{{ source.type.value }}</span>
+                        <span style="color: #d1d5db;">·</span>
                         <span>{{ source.highlights|length }} highlight{% if source.highlights|length != 1 %}s{% endif
                             %}</span>
+                        {% set favorite_count = source.highlights|selectattr('is_favorite')|list|length %}
+                        {% if favorite_count > 0 %}
+                        <span style="color: #d1d5db;">·</span>
+                        <span style="color: #f59e0b;">★ {{ favorite_count }}</span>
+                        {% endif %}
                     </div>
                 </div>
-                <span
-                    style="background: #f0f0f0; padding: 4px 8px; border-radius: 3px; font-size: 12px; text-transform: uppercase;">{{
-                    source.type.value }}</span>
             </div>
         </div>
         {% endfor %}
     </div>
     {% else %}
-    <p style="color: #666; text-align: center; padding: 40px 0;">No sources yet. Add highlights with source information
-        to see them here.</p>
+    <p style="color: #9ca3af; text-align: center; padding: 40px 0;">No sources yet. Add highlights with source
+        information to see them here.</p>
     {% endif %}
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const typeFilter = document.getElementById('type-filter');
+    const favoritesFilter = document.getElementById('favorites-filter');
+    const sortBy = document.getElementById('sort-by');
+    const sourcesList = document.getElementById('sources-list');
+
+    if (!sourcesList) return;
+
+    // Store original order for recent sorting
+    const originalOrder = Array.from(sourcesList.children).map((item, index) => ({ item, index }));
+
+    function applyFiltersAndSort() {
+        const items = Array.from(sourcesList.children);
+        const typeValue = typeFilter.value;
+        const favoritesValue = favoritesFilter.value;
+        const sortValue = sortBy.value;
+
+        // Filter
+        items.forEach(item => {
+            let show = true;
+
+            if (typeValue && item.dataset.type !== typeValue) {
+                show = false;
+            }
+
+            if (favoritesValue === 'favorites' && parseInt(item.dataset.favorites || 0) === 0) {
+                show = false;
+            }
+
+            item.style.display = show ? '' : 'none';
+        });
+
+        // Get visible items for sorting
+        const visibleItems = items.filter(item => item.style.display !== 'none');
+        
+        // Sort
+        visibleItems.sort((a, b) => {
+            const [field, order] = sortValue.split('-');
+            let aVal, bVal;
+
+            if (field === 'highlights') {
+                aVal = parseInt(a.dataset.highlights || 0);
+                bVal = parseInt(b.dataset.highlights || 0);
+            } else if (field === 'favorites') {
+                aVal = parseInt(a.dataset.favorites || 0);
+                bVal = parseInt(b.dataset.favorites || 0);
+            } else if (field === 'recent') {
+                // Use original DOM position
+                const aOriginal = originalOrder.find(o => o.item === a);
+                const bOriginal = originalOrder.find(o => o.item === b);
+                aVal = aOriginal ? aOriginal.index : 0;
+                bVal = bOriginal ? bOriginal.index : 0;
+                return order === 'desc' ? aVal - bVal : bVal - aVal;
+            }
+
+            return order === 'desc' ? bVal - aVal : aVal - bVal;
+        });
+
+        // Clear and reorder
+        sourcesList.innerHTML = '';
+        visibleItems.forEach(item => sourcesList.appendChild(item));
+        
+        // Add back hidden items at the end
+        items.filter(item => item.style.display === 'none').forEach(item => sourcesList.appendChild(item));
+    }
+
+    if (typeFilter) typeFilter.addEventListener('change', applyFiltersAndSort);
+    if (favoritesFilter) favoritesFilter.addEventListener('change', applyFiltersAndSort);
+    if (sortBy) sortBy.addEventListener('change', applyFiltersAndSort);
+});
+</script>
 {% endblock %}

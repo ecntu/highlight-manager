@@ -1,34 +1,80 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="card">
-    <h2 style="margin-bottom: 15px;">Quick Add</h2>
-    <form hx-post="/highlights" hx-target="#highlights-list" hx-swap="afterbegin" hx-on::after-request="this.reset()">
-        <div class="form-group">
-            <textarea name="text" rows="4" placeholder="Paste your highlight here..." required autofocus></textarea>
+<!-- Quick Add with Progressive Disclosure -->
+<div class="card" style="margin-bottom: 32px;">
+    <form id="quick-add-form" hx-post="/highlights" hx-target="#highlights-list" hx-swap="afterbegin"
+        hx-on::after-request="this.reset(); hideExtraFields()">
+        <div class="form-group" style="margin-bottom: 0;">
+            <textarea id="highlight-text" name="text" rows="3" placeholder="Paste a highlight to save it..."
+                style="font-size: 15px; resize: vertical;" required autofocus oninput="showExtraFields()"></textarea>
         </div>
-        <div style="display: flex; gap: 10px; margin-top: 10px;">
-            <input type="text" name="tags" placeholder="Tags (comma-separated)" style="flex: 1;">
-            <input type="text" name="note" placeholder="Note (optional)" style="flex: 1;">
+
+        <!-- Extra fields - hidden until text is entered -->
+        <div id="extra-fields"
+            style="display: none; margin-top: 16px; padding-top: 16px; border-top: 1px solid #f0f0f0;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+                <input type="text" name="tags" placeholder="Tags (comma-separated)" style="font-size: 14px;">
+                <input type="text" name="note" placeholder="Your note (why it matters)" style="font-size: 14px;">
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;">
+                <input type="text" name="source_url" placeholder="URL (for web)" style="font-size: 14px;">
+                <input type="text" name="source_title" placeholder="Title (for books)" style="font-size: 14px;">
+            </div>
+
+            <div style="display: flex; justify-content: flex-end;">
+                <button type="submit" style="padding: 10px 24px;">
+                    Save Highlight
+                    <span class="htmx-indicator">...</span>
+                </button>
+            </div>
         </div>
-        <div style="display: flex; gap: 10px; margin-top: 10px;">
-            <input type="text" name="source_url" placeholder="Source URL (for web sources)" style="flex: 1;">
-            <input type="text" name="source_title" placeholder="Source title (for books)" style="flex: 1;">
-        </div>
-        <button type="submit" style="margin-top: 10px;">
-            Save Highlight
-            <span class="htmx-indicator">...</span>
-        </button>
     </form>
 </div>
 
-<div class="card">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-        <h2>Recent Highlights</h2>
-        <small style="color: #666;" id="highlights-count">{{ highlights|length }} highlights</small>
-    </div>
-    <div id="highlights-list">
-        {% include "partials/highlights_list.html" %}
-    </div>
+<!-- Recent Highlights -->
+<div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 16px;">
+    <h2 style="font-size: 18px; font-weight: 600; color: #1a1a1a;">Recent Highlights</h2>
+    <small style="color: #999; font-size: 13px;">{{ highlights|length }} total</small>
 </div>
+
+<div id="highlights-list">
+    {% include "partials/highlights_list.html" %}
+</div>
+
+<script>
+    function showExtraFields() {
+        const text = document.getElementById('highlight-text').value.trim();
+        const extraFields = document.getElementById('extra-fields');
+        if (text && extraFields.style.display === 'none') {
+            extraFields.style.display = 'block';
+            extraFields.style.animation = 'slideDown 0.2s ease-out';
+        }
+    }
+
+    function hideExtraFields() {
+        const extraFields = document.getElementById('extra-fields');
+        const highlightText = document.getElementById('highlight-text');
+        extraFields.style.display = 'none';
+        highlightText.value = '';
+        highlightText.rows = 3;
+    }
+
+    // Add animation
+    const style = document.createElement('style');
+    style.textContent = `
+    @keyframes slideDown {
+        from {
+            opacity: 0;
+            transform: translateY(-10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+`;
+    document.head.appendChild(style);
+</script>
 {% endblock %}

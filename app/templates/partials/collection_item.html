@@ -1,20 +1,18 @@
-<div style="padding: 15px; background: #f8f9fa; border-radius: 4px; border-left: 4px solid #007bff;">
-    <div style="display: flex; justify-content: space-between; align-items: start;">
-        <div style="flex: 1;">
-            <h3 style="margin-bottom: 5px;">
-                <a href="/collections/{{ collection.id }}" style="color: #000; text-decoration: none;">
-                    {{ collection.name }}
-                </a>
+<div style="padding: 16px; border: 1px solid #e5e5e5; border-radius: 8px; cursor: pointer; transition: all 0.15s;" 
+    onclick="window.location='/collections/{{ collection.id }}'"
+    onmouseover="this.style.borderColor='#d1d5db'; this.style.background='#fafafa';"
+    onmouseout="this.style.borderColor='#e5e5e5'; this.style.background='white';">
+    <div style="display: flex; justify-content: space-between; align-items: start; gap: 16px;">
+        <div style="flex: 1; min-width: 0;">
+            <h3 style="margin-bottom: 6px; font-size: 15px; font-weight: 600;">
+                {{ collection.name }}
             </h3>
-            <p style="color: #666; font-size: 14px; margin-bottom: 5px;">{{ collection.description or "No description"
-                }}</p>
-            <small style="color: #999;">{{ collection.highlights|length }} highlights</small>
-        </div>
-        <div style="display: flex; gap: 10px;">
-            <a href="/collections/{{ collection.id }}"
-                style="padding: 6px 12px; background: #007bff; color: white; text-decoration: none; border-radius: 4px; font-size: 12px;">
-                View
-            </a>
+            {% if collection.description %}
+            <p style="color: #6b7280; font-size: 13px; margin-bottom: 8px; line-height: 1.4;">{{ collection.description }}</p>
+            {% endif %}
+            <div style="font-size: 13px; color: #9ca3af;">
+                {{ collection.highlights|length }} highlight{% if collection.highlights|length != 1 %}s{% endif %}
+            </div>
         </div>
     </div>
 </div>

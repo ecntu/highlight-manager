@@ -1,177 +1,103 @@
 {% extends "base.html" %}
 
-{% block title %}{{ highlight.text[:50] }}... - PHM{% endblock %}
+{% block title %}Highlight{% endblock %}
 
 {% block content %}
-<div class="card">
-    <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 20px;">
-        <h2>Highlight Details</h2>
-        <div style="display: flex; gap: 10px;">
-            <button hx-put="/highlights/{{ highlight.id }}/favorite" hx-target="this" hx-swap="outerHTML"
-                class="secondary">
-                {% if highlight.is_favorite %}★ Favorited{% else %}☆ Favorite{% endif %}
-            </button>
-            <button hx-delete="/highlights/{{ highlight.id }}" hx-confirm="Archive this highlight?"
-                hx-target="closest .card" hx-swap="outerHTML" class="secondary">
-                {% if highlight.status.value == 'archived' %}Unarchive{% else %}Archive{% endif %}
-            </button>
-        </div>
-    </div>
+<style>
+    /* Override base button styles for icon buttons */
+    #highlight-view .action-btn:hover {
+        background: #f5f5f5;
+        color: #1a1a1a;
+        transform: none;
+        box-shadow: none;
+    }
 
-    <form hx-patch="/highlights/{{ highlight.id }}" hx-target="this" hx-swap="outerHTML" hx-indicator="#save-indicator">
-        <div class="form-group">
-            <label>Text</label>
-            <textarea name="text" rows="6" required>{{ highlight.text }}</textarea>
-        </div>
+    #highlight-view .action-btn:active {
+        transform: none;
+    }
 
-        <div class="form-group">
-            <label>Note</label>
-            <textarea name="note" rows="3" placeholder="Why does this matter?">{{ highlight.note or '' }}</textarea>
-        </div>
+    #highlight-view .action-btn.favorite:hover {
+        color: #f59e0b;
+    }
 
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-            <div class="form-group">
-                <label>Tags (comma-separated)</label>
-                <input type="text" name="tags"
-                    value="{% if highlight.tags %}{% for tag in highlight.tags %}{{ tag.name }}{% if not loop.last %}, {% endif %}{% endfor %}{% endif %}"
-                    placeholder="tag1, tag2, tag3">
-            </div>
+    /* Pill button hover states */
+    .pill-btn:hover {
+        background: #f9fafb;
+        border-color: #d1d5db;
+        transform: none;
+        box-shadow: none;
+    }
 
-            <div class="form-group">
-                <label>Source Author</label>
-                <input type="text" name="source_author"
-                    value="{{ highlight.source.author if highlight.source and highlight.source.author else '' }}"
-                    placeholder="Author name">
-            </div>
-        </div>
+    .pill-btn:active {
+        transform: none;
+    }
+</style>
 
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-            <div class="form-group">
-                <label>Source URL (for web sources)</label>
-                <input type="text" name="source_url"
-                    value="{{ highlight.source.url if highlight.source and highlight.source.url else '' }}"
-                    placeholder="https://example.com/article">
-            </div>
-
-            <div class="form-group">
-                <label>Source Title (for books)</label>
-                <input type="text" name="source_title" value="{{ highlight.source.title if highlight.source else '' }}"
-                    placeholder="Book or article title">
-            </div>
-        </div>
-
-        <div style="display: flex; gap: 10px; margin-top: 15px;">
-            <button type="submit">
-                Save Changes
-                <span class="htmx-indicator" id="save-indicator">...</span>
-            </button>
-            <a href="/highlights"
-                style="padding: 10px 20px; background: #6c757d; color: white; text-decoration: none; border-radius: 4px; font-size: 14px; font-weight: 500;">Cancel</a>
-        </div>
-    </form>
+<div id="highlight-container">
+    {% include 'partials/highlight_card.html' %}
 </div>
 
-<div class="card">
-    <h3 style="margin-bottom: 15px; font-size: 16px;">Collections</h3>
-    <div style="margin-bottom: 15px;">
-        <small style="color: #666;">
-            {% if highlight.collections %}
-            In {{ highlight.collections|length }} collection(s):
-            {% else %}
-            Not in any collections yet.
-            {% endif %}
-        </small>
-    </div>
-    {% if highlight.collections %}
-    <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 15px;">
-        {% for collection in highlight.collections %}
-        <div
-            style="display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; background: #e7f3ff; border-radius: 4px; font-size: 14px;">
-            <a href="/collections/{{ collection.id }}" style="color: #007bff; text-decoration: none;">
-                {{ collection.name }}
-            </a>
-            <button hx-delete="/collections/{{ collection.id }}/highlights/{{ highlight.id }}" hx-target="closest div"
-                hx-swap="outerHTML"
-                style="background: none; border: none; color: #dc3545; cursor: pointer; font-size: 16px; padding: 0; line-height: 1;">
-                ×
-            </button>
-        </div>
-        {% endfor %}
-    </div>
-    {% endif %}
-    <details style="margin-top: 10px;">
-        <summary style="cursor: pointer; color: #007bff; font-size: 14px;">Add to collection</summary>
-        <div id="add-to-collection" style="margin-top: 10px; padding: 10px; background: #f8f9fa; border-radius: 4px;">
-            Loading collections...
-        </div>
-    </details>
-</div>
-
-<div class="card">
-    <h3 style="margin-bottom: 15px; font-size: 16px;">Metadata</h3>
-    <div style="display: grid; grid-template-columns: 150px 1fr; gap: 10px; font-size: 14px;">
-        <strong>Created:</strong>
-        <span>{{ highlight.created_at.strftime('%B %d, %Y at %I:%M %p') }}</span>
-
-        <strong>Last Updated:</strong>
-        <span>{{ highlight.updated_at.strftime('%B %d, %Y at %I:%M %p') }}</span>
-
-        {% if highlight.device %}
-        <strong>Captured From:</strong>
-        <span>{{ highlight.device.name }}</span>
-        {% endif %}
-
-        <strong>Status:</strong>
-        <span style="text-transform: capitalize;">{{ highlight.status.value }}</span>
+<!-- Collection Picker Modal -->
+<div id="collection-modal"
+    style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.4); backdrop-filter: blur(4px); z-index: 1000; align-items: center; justify-content: center;"
+    onclick="if(event.target === this) this.style.display='none'">
+    <div style="max-width: 420px; width: 90%; background: white; border-radius: 16px; padding: 28px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);"
+        onclick="event.stopPropagation()">
+        <h3 style="margin-bottom: 20px; font-size: 18px; font-weight: 600; color: #1a1a1a;">Add to Collection</h3>
+        <div id="collection-list" style="max-height: 400px; overflow-y: auto;">Loading...</div>
     </div>
 </div>
+
+<!-- Tag Add Modal -->
+<div id="tag-modal"
+    style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;"
+    onclick="if(event.target === this) this.style.display='none'"></div>
 
 <script>
-    // Load available collections when details is opened
-    document.querySelector('details').addEventListener('toggle', function (e) {
-        if (e.target.open) {
-            fetch('/collections')
-                .then(r => r.text())
-                .then(html => {
-                    const parser = new DOMParser();
-                    const doc = parser.parseFromString(html, 'text/html');
-                    const collectionsData = [{% for c in highlight.collections %}'{{ c.id }}'{% if not loop.last %}, {% endif %} {% endfor %}];
-        const highlightId = '{{ highlight.id }}';
+    function showAddToCollection() {
+        const modal = document.getElementById('collection-modal');
+        modal.style.display = 'flex';
 
-        // Get all collections from the page
-        const allCollections = doc.querySelectorAll('#collections-list > div > div');
-        const container = document.getElementById('add-to-collection');
+        fetch('/collections')
+            .then(r => r.text())
+            .then(html => {
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+                const currentCollections = [{% for c in highlight.collections %}'{{ c.id }}'{% if not loop.last %}, {% endif %} {% endfor %}];
+    const highlightId = '{{ highlight.id }}';
 
-        if (allCollections.length === 0) {
-            container.innerHTML = '<p style="color: #666; font-size: 14px;">No collections yet. <a href="/collections" style="color: #007bff;">Create one first</a>.</p>';
-        } else {
-            let html = '<div style="display: flex; flex-direction: column; gap: 8px;">';
-            allCollections.forEach(col => {
-                const link = col.querySelector('a[href^="/collections/"]');
-                const collectionId = link.href.split('/').pop();
-                const collectionName = link.textContent.trim();
-                const isInCollection = collectionsData.includes(collectionId);
+    const allCollections = doc.querySelectorAll('#collections-list > div > div');
+    const container = document.getElementById('collection-list');
 
-                if (!isInCollection) {
-                    html += `<button onclick="addToCollection('${collectionId}', '${highlightId}')" 
-                                style="padding: 8px 12px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; text-align: left; font-size: 14px;">
-                                + ${collectionName}
-                            </button>`;
-                }
-            });
-            html += '</div>';
-            container.innerHTML = html;
-        }
-    });
+    if (allCollections.length === 0) {
+        container.innerHTML = '<p style="color: #6b7280; font-size: 14px;">No collections yet. <a href="/collections" style="color: #3b82f6; text-decoration: none; font-weight: 500;">Create one</a>.</p>';
+    } else {
+        let buttons = '';
+        allCollections.forEach(col => {
+            const link = col.querySelector('a[href^="/collections/"]');
+            const collectionId = link.href.split('/').pop();
+            const collectionName = link.textContent.trim();
+            const isIn = currentCollections.includes(collectionId);
+
+            buttons += `<button 
+                        onclick="addToCollection('${collectionId}', '${highlightId}')" 
+                        style="width: 100%; padding: 14px 16px; margin-bottom: 8px; background: ${isIn ? '#f3f4f6' : 'white'}; color: ${isIn ? '#9ca3af' : '#1a1a1a'}; border: 1px solid ${isIn ? '#e5e7eb' : '#e5e5e5'}; border-radius: 10px; cursor: ${isIn ? 'not-allowed' : 'pointer'}; text-align: left; font-size: 14px; font-weight: 500; transition: all 0.15s;"
+                        onmouseover="if(!this.disabled) this.style.borderColor='#3b82f6'; if(!this.disabled) this.style.boxShadow='0 0 0 3px rgba(59, 130, 246, 0.1)';"
+                        onmouseout="if(!this.disabled) this.style.borderColor='#e5e5e5'; if(!this.disabled) this.style.boxShadow='none';"
+                        ${isIn ? 'disabled' : ''}>
+                        ${isIn ? '<span style="color: #10b981; margin-right: 6px;">✓</span>' : ''}${collectionName}
+                    </button>`;
+        });
+        container.innerHTML = buttons;
     }
-});
+        });
+}
 
     function addToCollection(collectionId, highlightId) {
         fetch(`/collections/${collectionId}/highlights/${highlightId}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' }
         })
-            .then(r => r.json())
             .then(() => window.location.reload());
     }
 </script>

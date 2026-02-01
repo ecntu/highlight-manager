@@ -13,113 +13,236 @@
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             line-height: 1.6;
-            color: #333;
-            background: #f5f5f5;
+            color: #1a1a1a;
+            background: #fafafa;
         }
 
         .container {
-            max-width: 1200px;
+            max-width: 900px;
             margin: 0 auto;
-            padding: 20px;
+            padding: 0 24px;
         }
 
+        /* Modern Header */
         header {
             background: white;
-            border-bottom: 1px solid #e0e0e0;
-            padding: 15px 0;
-            margin-bottom: 30px;
+            border-bottom: 1px solid #e5e5e5;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(10px);
+            background: rgba(255, 255, 255, 0.95);
         }
 
         header .container {
             display: flex;
             justify-content: space-between;
             align-items: center;
+            padding: 12px 24px;
+            gap: 24px;
         }
 
-        header h1 {
-            font-size: 20px;
-            font-weight: 600;
+        /* Search in Nav */
+        .nav-search {
+            flex: 1;
+            max-width: 400px;
+            position: relative;
         }
 
-        header nav a {
-            margin-left: 20px;
+        .nav-search input {
+            width: 100%;
+            padding: 8px 12px 8px 36px;
+            border: 1px solid #e5e5e5;
+            border-radius: 8px;
+            font-size: 14px;
+            background: #f8f8f8;
+            transition: all 0.2s;
+        }
+
+        .nav-search input:focus {
+            outline: none;
+            border-color: #3b82f6;
+            background: white;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .nav-search svg {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #999;
+            width: 16px;
+            height: 16px;
+        }
+
+        /* Search Dropdown */
+        .search-dropdown {
+            position: absolute;
+            top: calc(100% + 8px);
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid #e5e5e5;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            max-height: 400px;
+            overflow-y: auto;
+            display: none;
+        }
+
+        .search-dropdown.active {
+            display: block;
+        }
+
+        .search-dropdown-item {
+            padding: 12px 16px;
+            border-bottom: 1px solid #f5f5f5;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+
+        .search-dropdown-item:hover {
+            background: #f8f8f8;
+        }
+
+        .search-dropdown-item:last-child {
+            border-bottom: none;
+        }
+
+        .search-dropdown-footer {
+            padding: 8px 16px;
+            text-align: center;
+            border-top: 1px solid #e5e5e5;
+            background: #f8f8f8;
+        }
+
+        .search-dropdown-footer a {
+            color: #3b82f6;
+            text-decoration: none;
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        /* Navigation Icons */
+        nav {
+            display: flex;
+            gap: 4px;
+            align-items: center;
+        }
+
+        nav a {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 12px;
             text-decoration: none;
             color: #666;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.15s;
         }
 
-        header nav a:hover {
-            color: #000;
+        nav a:hover {
+            color: #1a1a1a;
+            background: #f5f5f5;
+        }
+
+        nav a svg {
+            width: 18px;
+            height: 18px;
+        }
+
+        nav .user-menu {
+            margin-left: 8px;
+            padding-left: 16px;
+            border-left: 1px solid #e5e5e5;
+            color: #999;
+            font-size: 13px;
         }
 
         .card {
             background: white;
-            border-radius: 8px;
+            border-radius: 12px;
             padding: 24px;
-            margin-bottom: 20px;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            margin-bottom: 24px;
+            border: 1px solid #e5e5e5;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
         }
 
         .form-group {
-            margin-bottom: 15px;
+            margin-bottom: 16px;
         }
 
         label {
             display: block;
-            margin-bottom: 5px;
+            margin-bottom: 6px;
             font-weight: 500;
             font-size: 14px;
+            color: #1a1a1a;
         }
 
         input,
         textarea,
         select {
             width: 100%;
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
+            padding: 10px 12px;
+            border: 1px solid #e5e5e5;
+            border-radius: 8px;
             font-size: 14px;
+            font-family: inherit;
+            transition: all 0.2s;
         }
 
         input:focus,
         textarea:focus,
         select:focus {
             outline: none;
-            border-color: #4a90e2;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
         }
 
         button {
-            background: #4a90e2;
+            background: #3b82f6;
             color: white;
             border: none;
             padding: 10px 20px;
-            border-radius: 4px;
+            border-radius: 8px;
             cursor: pointer;
             font-size: 14px;
             font-weight: 500;
+            transition: all 0.2s;
         }
 
         button:hover {
-            background: #357abd;
+            background: #2563eb;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);
+        }
+
+        button:active {
+            transform: translateY(0);
         }
 
         button.secondary {
-            background: #6c757d;
+            background: #6b7280;
         }
 
         button.secondary:hover {
-            background: #5a6268;
+            background: #4b5563;
         }
 
         .error {
-            color: #dc3545;
+            color: #ef4444;
             font-size: 14px;
             margin-top: 5px;
         }
 
         .success {
-            color: #28a745;
+            color: #10b981;
             font-size: 14px;
             margin-top: 5px;
         }
@@ -134,12 +257,12 @@
 
         .htmx-swapping {
             opacity: 0;
-            transition: opacity 200ms ease-out;
+            transition: opacity 150ms ease-out;
         }
 
         .htmx-settling {
             opacity: 1;
-            transition: opacity 200ms ease-in;
+            transition: opacity 150ms ease-in;
         }
     </style>
     <script src="https://unpkg.com/htmx.org@1.9.10"></script>
@@ -149,22 +272,88 @@
     {% if current_user %}
     <header>
         <div class="container">
-            <h1><a href="/highlights" style="color: inherit; text-decoration: none;">PHM</a></h1>
+            <div class="nav-search">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+                <input type="text" id="nav-search" placeholder="Search highlights..." hx-get="/api/search-quick"
+                    hx-trigger="keyup changed delay:300ms" hx-target="#nav-search-results" autocomplete="off">
+                <div id="nav-search-results" class="search-dropdown"></div>
+            </div>
+
             <nav>
-                <a href="/highlights">Highlights</a>
-                <a href="/sources">Sources</a>
-                <a href="/collections">Collections</a>
-                <a href="/search">Search</a>
-                <a href="/settings">Settings</a>
-                <a href="/logout">Logout ({{ current_user.username }})</a>
+                {% if request.url.path != '/highlights' %}
+                <a href="/highlights">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                    </svg>
+                    Home
+                </a>
+                {% endif %}
+                <a href="/sources">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                    </svg>
+                    Sources
+                </a>
+                <a href="/collections">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                    </svg>
+                    Collections
+                </a>
+                <a href="/settings">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    Settings
+                </a>
             </nav>
         </div>
     </header>
     {% endif %}
 
-    <div class="container">
+    <div class="container" style="padding-top: 32px; padding-bottom: 48px;">
         {% block content %}{% endblock %}
     </div>
+
+    <script>
+        // Cmd+K keyboard shortcut for search
+        document.addEventListener('keydown', (e) => {
+            if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+                e.preventDefault();
+                document.getElementById('nav-search').focus();
+            }
+        });
+
+        // Close search dropdown when clicking outside
+        document.addEventListener('click', (e) => {
+            const dropdown = document.getElementById('nav-search-results');
+            const search = document.getElementById('nav-search');
+            if (dropdown && !dropdown.contains(e.target) && e.target !== search) {
+                dropdown.classList.remove('active');
+            }
+        });
+
+        // Show dropdown when results load
+        document.body.addEventListener('htmx:afterSwap', (e) => {
+            if (e.detail.target.id === 'nav-search-results') {
+                const dropdown = document.getElementById('nav-search-results');
+                if (dropdown.innerHTML.trim()) {
+                    dropdown.classList.add('active');
+                } else {
+                    dropdown.classList.remove('active');
+                }
+            }
+        });
+    </script>
 </body>
 
 </html>

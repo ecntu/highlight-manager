@@ -2,15 +2,13 @@
 
 {% block content %}
 <div class="card">
-    <h2 style="margin-bottom: 15px;">Create Collection</h2>
+    <h2 style="margin-bottom: 20px; font-size: 18px; font-weight: 600;">Create Collection</h2>
     <form hx-post="/collections" hx-target="#collections-list" hx-swap="afterbegin" hx-on::after-request="this.reset()">
-        <div class="form-group">
-            <input type="text" name="name" placeholder="Collection name" required autofocus>
+        <div style="display: grid; gap: 12px; margin-bottom: 16px;">
+            <input type="text" name="name" placeholder="Collection name" required autofocus style="font-size: 14px;">
+            <textarea name="description" rows="2" placeholder="Description (optional)" style="font-size: 14px; resize: vertical;"></textarea>
         </div>
-        <div class="form-group">
-            <textarea name="description" rows="3" placeholder="Description (optional)"></textarea>
-        </div>
-        <button type="submit">
+        <button type="submit" style="width: auto;">
             Create Collection
             <span class="htmx-indicator">...</span>
         </button>
@@ -18,19 +16,19 @@
 </div>
 
 <div class="card">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-        <h2>Your Collections</h2>
-        <small style="color: #666;">{{ collections|length }} collections</small>
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h2 style="margin: 0; font-size: 18px; font-weight: 600;">Your Collections</h2>
+        <small style="color: #9ca3af; font-size: 13px;">{{ collections|length }} total</small>
     </div>
     <div id="collections-list">
         {% if collections %}
-        <div style="display: grid; gap: 15px;">
+        <div style="display: grid; gap: 12px;">
             {% for collection in collections %}
             {% include "partials/collection_item.html" %}
             {% endfor %}
         </div>
         {% else %}
-        <p style="color: #666; text-align: center; padding: 40px 0;">
+        <p style="color: #9ca3af; text-align: center; padding: 40px 0;">
             No collections yet. Create one above to organize your highlights.
         </p>
         {% endif %}
