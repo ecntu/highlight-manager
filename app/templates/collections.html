@@ -6,7 +6,8 @@
     <form hx-post="/collections" hx-target="#collections-list" hx-swap="afterbegin" hx-on::after-request="this.reset()">
         <div style="display: grid; gap: 12px; margin-bottom: 16px;">
             <input type="text" name="name" placeholder="Collection name" required autofocus style="font-size: 14px;">
-            <textarea name="description" rows="2" placeholder="Description (optional)" style="font-size: 14px; resize: vertical;"></textarea>
+            <textarea name="description" rows="2" placeholder="Description (optional)"
+                style="font-size: 14px; resize: vertical;"></textarea>
         </div>
         <button type="submit" style="width: auto;">
             Create Collection

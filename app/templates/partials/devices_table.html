@@ -1,17 +1,19 @@
 {% if devices %}
 <div style="display: grid; gap: 10px;">
     {% for device in devices %}
-    <div id="device-{{ device.id }}" style="padding: 14px 16px; border: 1px solid #e5e5e5; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; gap: 16px;">
+    <div id="device-{{ device.id }}"
+        style="padding: 14px 16px; border: 1px solid #e5e5e5; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; gap: 16px;">
         <div style="flex: 1; min-width: 0;">
             <div style="font-weight: 500; font-size: 14px; color: #1a1a1a; margin-bottom: 4px;">{{ device.name }}</div>
             <div style="display: flex; gap: 12px; font-size: 13px; color: #9ca3af;">
                 <span>Created {{ device.created_at.strftime('%b %d, %Y') }}</span>
                 <span style="color: #d1d5db;">·</span>
-                <span>Last used {% if device.last_used_at %}{{ device.last_used_at.strftime('%b %d, %Y') }}{% else %}never{% endif %}</span>
+                <span>Last used {% if device.last_used_at %}{{ device.last_used_at.strftime('%b %d, %Y') }}{% else
+                    %}never{% endif %}</span>
             </div>
         </div>
-        <button hx-delete="/devices/{{ device.id }}" hx-target="#device-{{ device.id }}"
-            hx-swap="outerHTML swap:200ms" hx-confirm="Revoke this device key?"
+        <button hx-delete="/devices/{{ device.id }}" hx-target="#device-{{ device.id }}" hx-swap="outerHTML swap:200ms"
+            hx-confirm="Revoke this device key?"
             style="background: white; border: 1px solid #e5e5e5; padding: 6px 14px; font-size: 13px; color: #6b7280; border-radius: 6px; cursor: pointer; transition: all 0.15s; white-space: nowrap;"
             onmouseover="this.style.borderColor='#d1d5db'; this.style.background='#f9fafb';"
             onmouseout="this.style.borderColor='#e5e5e5'; this.style.background='white';">
@@ -21,5 +23,6 @@
     {% endfor %}
 </div>
 {% else %}
-<p style="color: #9ca3af; font-size: 14px;">No devices yet. Create one above to start capturing highlights from other devices.</p>
+<p style="color: #9ca3af; font-size: 14px;">No devices yet. Create one above to start capturing highlights from other
+    devices.</p>
 {% endif %}

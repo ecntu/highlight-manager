@@ -71,75 +71,75 @@
 </div>
 
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    const typeFilter = document.getElementById('type-filter');
-    const favoritesFilter = document.getElementById('favorites-filter');
-    const sortBy = document.getElementById('sort-by');
-    const sourcesList = document.getElementById('sources-list');
+    document.addEventListener('DOMContentLoaded', function () {
+        const typeFilter = document.getElementById('type-filter');
+        const favoritesFilter = document.getElementById('favorites-filter');
+        const sortBy = document.getElementById('sort-by');
+        const sourcesList = document.getElementById('sources-list');
 
-    if (!sourcesList) return;
+        if (!sourcesList) return;
 
-    // Store original order for recent sorting
-    const originalOrder = Array.from(sourcesList.children).map((item, index) => ({ item, index }));
+        // Store original order for recent sorting
+        const originalOrder = Array.from(sourcesList.children).map((item, index) => ({ item, index }));
 
-    function applyFiltersAndSort() {
-        const items = Array.from(sourcesList.children);
-        const typeValue = typeFilter.value;
-        const favoritesValue = favoritesFilter.value;
-        const sortValue = sortBy.value;
+        function applyFiltersAndSort() {
+            const items = Array.from(sourcesList.children);
+            const typeValue = typeFilter.value;
+            const favoritesValue = favoritesFilter.value;
+            const sortValue = sortBy.value;
 
-        // Filter
-        items.forEach(item => {
-            let show = true;
+            // Filter
+            items.forEach(item => {
+                let show = true;
 
-            if (typeValue && item.dataset.type !== typeValue) {
-                show = false;
-            }
+                if (typeValue && item.dataset.type !== typeValue) {
+                    show = false;
+                }
 
-            if (favoritesValue === 'favorites' && parseInt(item.dataset.favorites || 0) === 0) {
-                show = false;
-            }
+                if (favoritesValue === 'favorites' && parseInt(item.dataset.favorites || 0) === 0) {
+                    show = false;
+                }
 
-            item.style.display = show ? '' : 'none';
-        });
+                item.style.display = show ? '' : 'none';
+            });
 
-        // Get visible items for sorting
-        const visibleItems = items.filter(item => item.style.display !== 'none');
-        
-        // Sort
-        visibleItems.sort((a, b) => {
-            const [field, order] = sortValue.split('-');
-            let aVal, bVal;
+            // Get visible items for sorting
+            const visibleItems = items.filter(item => item.style.display !== 'none');
 
-            if (field === 'highlights') {
-                aVal = parseInt(a.dataset.highlights || 0);
-                bVal = parseInt(b.dataset.highlights || 0);
-            } else if (field === 'favorites') {
-                aVal = parseInt(a.dataset.favorites || 0);
-                bVal = parseInt(b.dataset.favorites || 0);
-            } else if (field === 'recent') {
-                // Use original DOM position
-                const aOriginal = originalOrder.find(o => o.item === a);
-                const bOriginal = originalOrder.find(o => o.item === b);
-                aVal = aOriginal ? aOriginal.index : 0;
-                bVal = bOriginal ? bOriginal.index : 0;
-                return order === 'desc' ? aVal - bVal : bVal - aVal;
-            }
+            // Sort
+            visibleItems.sort((a, b) => {
+                const [field, order] = sortValue.split('-');
+                let aVal, bVal;
 
-            return order === 'desc' ? bVal - aVal : aVal - bVal;
-        });
+                if (field === 'highlights') {
+                    aVal = parseInt(a.dataset.highlights || 0);
+                    bVal = parseInt(b.dataset.highlights || 0);
+                } else if (field === 'favorites') {
+                    aVal = parseInt(a.dataset.favorites || 0);
+                    bVal = parseInt(b.dataset.favorites || 0);
+                } else if (field === 'recent') {
+                    // Use original DOM position
+                    const aOriginal = originalOrder.find(o => o.item === a);
+                    const bOriginal = originalOrder.find(o => o.item === b);
+                    aVal = aOriginal ? aOriginal.index : 0;
+                    bVal = bOriginal ? bOriginal.index : 0;
+                    return order === 'desc' ? aVal - bVal : bVal - aVal;
+                }
 
-        // Clear and reorder
-        sourcesList.innerHTML = '';
-        visibleItems.forEach(item => sourcesList.appendChild(item));
-        
-        // Add back hidden items at the end
-        items.filter(item => item.style.display === 'none').forEach(item => sourcesList.appendChild(item));
-    }
+                return order === 'desc' ? bVal - aVal : aVal - bVal;
+            });
 
-    if (typeFilter) typeFilter.addEventListener('change', applyFiltersAndSort);
-    if (favoritesFilter) favoritesFilter.addEventListener('change', applyFiltersAndSort);
-    if (sortBy) sortBy.addEventListener('change', applyFiltersAndSort);
-});
+            // Clear and reorder
+            sourcesList.innerHTML = '';
+            visibleItems.forEach(item => sourcesList.appendChild(item));
+
+            // Add back hidden items at the end
+            items.filter(item => item.style.display === 'none').forEach(item => sourcesList.appendChild(item));
+        }
+
+        if (typeFilter) typeFilter.addEventListener('change', applyFiltersAndSort);
+        if (favoritesFilter) favoritesFilter.addEventListener('change', applyFiltersAndSort);
+        if (sortBy) sortBy.addEventListener('change', applyFiltersAndSort);
+    });
 </script>
 {% endblock %}

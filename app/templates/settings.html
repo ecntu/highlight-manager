@@ -5,8 +5,10 @@
 
 <div class="card">
     <h2 style="font-size: 18px; font-weight: 600; margin-bottom: 16px;">Account</h2>
-    <p style="color: #6b7280; margin-bottom: 20px; font-size: 14px;">Signed in as <strong style="color: #1a1a1a;">{{ current_user.username }}</strong></p>
-    <a href="/logout" style="display: inline-block; padding: 8px 16px; background: white; border: 1px solid #e5e5e5; color: #6b7280; text-decoration: none; border-radius: 6px; font-size: 14px; font-weight: 500; transition: all 0.15s;"
+    <p style="color: #6b7280; margin-bottom: 20px; font-size: 14px;">Signed in as <strong style="color: #1a1a1a;">{{
+            current_user.username }}</strong></p>
+    <a href="/logout"
+        style="display: inline-block; padding: 8px 16px; background: white; border: 1px solid #e5e5e5; color: #6b7280; text-decoration: none; border-radius: 6px; font-size: 14px; font-weight: 500; transition: all 0.15s;"
         onmouseover="this.style.borderColor='#d1d5db'; this.style.background='#f9fafb';"
         onmouseout="this.style.borderColor='#e5e5e5'; this.style.background='white';">
         Logout
@@ -17,16 +19,19 @@
     <h2 style="margin-bottom: 20px; font-size: 18px; font-weight: 600;">Device API Keys</h2>
 
     {% if new_api_key %}
-    <div style="background: #f0fdf4; border: 1px solid #86efac; padding: 16px; border-radius: 8px; margin-bottom: 20px;">
+    <div
+        style="background: #f0fdf4; border: 1px solid #86efac; padding: 16px; border-radius: 8px; margin-bottom: 20px;">
         <strong style="color: #15803d;">New API Key Created!</strong><br>
         <p style="margin: 10px 0 8px 0; color: #166534; font-size: 14px;">Save this key - it won't be shown again:</p>
-        <code style="background: white; padding: 10px; display: block; word-break: break-all; border-radius: 6px; font-size: 13px; border: 1px solid #d1d5db;">{{ new_api_key }}</code>
+        <code
+            style="background: white; padding: 10px; display: block; word-break: break-all; border-radius: 6px; font-size: 13px; border: 1px solid #d1d5db;">{{ new_api_key }}</code>
     </div>
     {% endif %}
 
     <form hx-post="/devices" hx-target="#devices-table" hx-swap="outerHTML" style="margin-bottom: 28px;">
         <div style="display: flex; gap: 10px;">
-            <input type="text" name="name" placeholder="Device name (e.g., iPhone, MacBook)" required style="flex: 1; font-size: 14px;">
+            <input type="text" name="name" placeholder="Device name (e.g., iPhone, MacBook)" required
+                style="flex: 1; font-size: 14px;">
             <button type="submit" style="width: auto;">
                 Create Device Key
                 <span class="htmx-indicator">...</span>
@@ -43,7 +48,8 @@
     <div style="margin-top: 32px; padding-top: 32px; border-top: 1px solid #e5e5e5;">
         <h3 style="margin-bottom: 12px; font-size: 15px; font-weight: 600; color: #1a1a1a;">Using Device Keys</h3>
         <p style="color: #6b7280; margin-bottom: 16px; font-size: 14px;">Send highlights from any device using:</p>
-        <pre style="background: #fafafa; padding: 16px; border-radius: 8px; overflow-x: auto; font-size: 12px; border: 1px solid #e5e5e5; line-height: 1.6;">curl -X POST {{ request.url.scheme }}://{{ request.url.netloc }}/api/highlights \
+        <pre
+            style="background: #fafafa; padding: 16px; border-radius: 8px; overflow-x: auto; font-size: 12px; border: 1px solid #e5e5e5; line-height: 1.6;">curl -X POST {{ request.url.scheme }}://{{ request.url.netloc }}/api/highlights \
   -H "Authorization: Bearer YOUR_API_KEY" \
   -F "text=Your highlight text" \
   -F "note=Optional note" \
