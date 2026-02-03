@@ -50,6 +50,11 @@
             padding: 0 24px;
         }
 
+        .page-content {
+            padding-top: 32px;
+            padding-bottom: 48px;
+        }
+
         /* Modern Header */
         header {
             background: var(--panel);
@@ -341,6 +346,13 @@
             display: flex;
             justify-content: flex-end;
             align-items: center;
+            gap: 10px;
+        }
+
+        .grid-two {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
         }
 
         .btn {
@@ -536,6 +548,40 @@
             cursor: pointer;
         }
 
+        .highlight-details summary {
+            list-style: none;
+            cursor: pointer;
+            color: var(--muted);
+            font-size: 13px;
+            display: none;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .highlight-details summary::-webkit-details-marker {
+            display: none;
+        }
+
+        .highlight-details summary .summary-label {
+            display: none;
+        }
+
+        .details-toggle {
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 8px 0 6px;
+        }
+
+        .desktop-only {
+            display: flex;
+        }
+
+        .mobile-only {
+            display: none;
+        }
+
         .modal-btn {
             width: 100%;
             padding: 14px 16px;
@@ -562,6 +608,117 @@
             border-color: #e5e7eb;
             cursor: not-allowed;
             box-shadow: none;
+        }
+
+        @media (max-width: 720px) {
+            .container {
+                padding: 0 16px;
+            }
+
+            .page-content {
+                padding-top: 20px;
+                padding-bottom: 32px;
+            }
+
+            header .container {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 12px;
+                padding: 12px 16px;
+            }
+
+            .nav-search {
+                max-width: 100%;
+            }
+
+            .key-hint {
+                display: none;
+            }
+
+            nav {
+                width: 100%;
+                flex-wrap: wrap;
+                justify-content: space-between;
+            }
+
+            nav a {
+                flex: 1 1 auto;
+                justify-content: center;
+                padding: 8px 10px;
+            }
+
+            nav a .nav-label {
+                display: none;
+            }
+
+            .card {
+                padding: 18px;
+            }
+
+            .section-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .row,
+            .row-between {
+                flex-wrap: wrap;
+            }
+
+            .grid-two {
+                grid-template-columns: 1fr;
+            }
+
+            .input-lg {
+                font-size: 14px;
+            }
+
+            .select-compact {
+                font-size: 12px;
+                width: 100%;
+            }
+
+            .highlight-details summary {
+                display: flex;
+            }
+
+            .highlight-meta-primary {
+                display: flex;
+            }
+
+            .details-primary {
+                display: none;
+            }
+
+            .highlight-details[open] .highlight-details-content {
+                padding-top: 10px;
+            }
+
+            .desktop-only {
+                display: none;
+            }
+
+            .mobile-only {
+                display: block;
+            }
+
+            .mobile-only.row,
+            .mobile-only.row-between {
+                display: flex;
+            }
+
+            .highlight-details-content {
+                width: 100%;
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 12px;
+            }
+        }
+
+        @media (min-width: 721px) {
+            .highlight-details {
+                display: none;
+            }
         }
 
         .meta-divider {
@@ -650,7 +807,7 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                             d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
                     </svg>
-                    Home
+                    <span class="nav-label">Home</span>
                 </a>
                 {% endif %}
                 <a href="/sources">
@@ -659,7 +816,7 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                             d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
                     </svg>
-                    Sources
+                    <span class="nav-label">Sources</span>
                 </a>
                 <a href="/collections">
                     <svg class="icon-lg" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
@@ -667,7 +824,7 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                             d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
                     </svg>
-                    Collections
+                    <span class="nav-label">Collections</span>
                 </a>
                 <a href="/settings">
                     <svg class="icon-lg" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
@@ -677,14 +834,14 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                             d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                     </svg>
-                    Settings
+                    <span class="nav-label">Settings</span>
                 </a>
             </nav>
         </div>
     </header>
     {% endif %}
 
-    <div class="container" style="padding-top: 32px; padding-bottom: 48px;">
+    <div class="container page-content">
         {% block content %}{% endblock %}
     </div>
 

@@ -19,7 +19,7 @@
                 placeholder="productivity, inspiration, ideas">
         </div>
 
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+        <div class="grid-two">
             <div class="form-group">
                 <label>Source URL (for web)</label>
                 <input type="text" name="source_url" value="{{ highlight.url or '' }}"
@@ -44,7 +44,7 @@
         <div class="form-actions" style="margin-top: 16px; gap: 10px;">
             <button type="submit" class="btn btn--ghost">Save</button>
             <button type="button" id="cancel-edit-{{ highlight.id }}" hx-get="/highlights/{{ highlight.id }}"
-                hx-target="#highlight-view" hx-swap="outerHTML" class="btn btn--ghost btn--sm">Cancel</button>
+                hx-target="#highlight-view" hx-swap="outerHTML" class="btn btn--ghost">Cancel</button>
         </div>
     </form>
 </div>
@@ -52,12 +52,15 @@
     (function () {
         const cancelButton = document.getElementById('cancel-edit-{{ highlight.id }}');
         if (!cancelButton) return;
+        const controller = new AbortController();
         const onKeyDown = (event) => {
             if (event.key === 'Escape') {
                 event.preventDefault();
                 cancelButton.click();
+                controller.abort();
             }
         };
-        document.addEventListener('keydown', onKeyDown, { once: true });
+        cancelButton.addEventListener('click', () => controller.abort(), { once: true });
+        document.addEventListener('keydown', onKeyDown, { signal: controller.signal });
     })();
 </script>
