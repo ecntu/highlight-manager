@@ -36,12 +36,12 @@ def highlight_matches(text: str, search_term: str) -> str:
     # Escape special regex characters but preserve the search term
     escaped_term = re.escape(search_term)
     # Case-insensitive replacement
-    pattern = re.compile(f'({escaped_term})', re.IGNORECASE)
-    return pattern.sub(r'<strong>\1</strong>', text)
+    pattern = re.compile(f"({escaped_term})", re.IGNORECASE)
+    return pattern.sub(r"<strong>\1</strong>", text)
 
 
 # Add custom filter to Jinja2
-templates.env.filters['highlight_matches'] = highlight_matches
+templates.env.filters["highlight_matches"] = highlight_matches
 
 
 def get_session_user(request: Request, db: Session = Depends(get_db)) -> Optional[User]:
@@ -824,8 +824,12 @@ def search_quick(
         preview = h.text[:100] + "..." if len(h.text) > 100 else h.text
         # Apply highlighting
         highlighted_preview = highlight_matches(preview, q)
-        source_text = h.source.domain if h.source and h.source.type.value == "web" else (h.source.title if h.source else "No source")
-        
+        source_text = (
+            h.source.domain
+            if h.source and h.source.type.value == "web"
+            else (h.source.title if h.source else "No source")
+        )
+
         html += f"""
         <a href="/highlights/{h.id}" class="search-dropdown-item" style="text-decoration: none; color: inherit; display: block;">
             <div style="font-size: 13px; color: #666; margin-bottom: 4px;">
@@ -860,11 +864,15 @@ def search_page(
 ):
     results = []
     if q or source_type or source_id or collection_id or tag or status or favorite:
-        query = db.query(Highlight).options(
-            joinedload(Highlight.source),
-            joinedload(Highlight.tags),
-            joinedload(Highlight.collections),
-        ).filter(Highlight.user_id == user.id)
+        query = (
+            db.query(Highlight)
+            .options(
+                joinedload(Highlight.source),
+                joinedload(Highlight.tags),
+                joinedload(Highlight.collections),
+            )
+            .filter(Highlight.user_id == user.id)
+        )
 
         if q:
             search_term = f"%{q}%"
@@ -881,7 +889,9 @@ def search_page(
             query = query.filter(Highlight.source_id == source_id)
 
         if collection_id:
-            query = query.filter(Highlight.collections.any(Collection.id == collection_id))
+            query = query.filter(
+                Highlight.collections.any(Collection.id == collection_id)
+            )
 
         if tag:
             query = query.filter(Highlight.tags.any(Tag.name == tag))
@@ -899,8 +909,7 @@ def search_page(
             # For relevance, prioritize exact matches in text over note
             # This is a simple implementation; could be enhanced with full-text search
             query = query.order_by(
-                Highlight.text.ilike(search_term).desc(),
-                Highlight.created_at.desc()
+                Highlight.text.ilike(search_term).desc(), Highlight.created_at.desc()
             )
         else:  # Default to recent-desc
             query = query.order_by(Highlight.created_at.desc())
@@ -1000,7 +1009,9 @@ def get_collection(
         raise HTTPException(status_code=404, detail="Collection not found")
 
     # Redirect to search with collection filter
-    return RedirectResponse(url=f"/search?collection_id={collection_id}", status_code=303)
+    return RedirectResponse(
+        url=f"/search?collection_id={collection_id}", status_code=303
+    )
 
 
 @app.patch("/collections/{collection_id}")

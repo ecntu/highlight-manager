@@ -274,9 +274,15 @@
 
         /* Spinning loader */
         @keyframes spin {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
+            from {
+                transform: rotate(0deg);
+            }
+
+            to {
+                transform: rotate(360deg);
+            }
         }
+
         .spinner {
             display: inline-block;
             animation: spin 1s linear infinite;
@@ -294,8 +300,9 @@
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                         d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                 </svg>
-                <input type="text" id="nav-search" name="q" placeholder="Search highlights..." hx-get="/api/search-quick"
-                    hx-trigger="keyup changed delay:300ms" hx-target="#nav-search-results" hx-include="#nav-search" autocomplete="off"
+                <input type="text" id="nav-search" name="q" placeholder="Search highlights..."
+                    hx-get="/api/search-quick" hx-trigger="keyup changed delay:300ms" hx-target="#nav-search-results"
+                    hx-include="#nav-search" autocomplete="off"
                     onkeydown="if(event.key === 'Enter') { event.preventDefault(); window.location.href = '/search?q=' + encodeURIComponent(this.value); } else if(event.key === 'Escape') { this.value = ''; document.getElementById('nav-search-results').classList.remove('active'); }">
                 <div id="nav-search-results" class="search-dropdown"></div>
             </div>

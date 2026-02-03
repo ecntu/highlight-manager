@@ -1,18 +1,17 @@
 <div style="background: white; border: 1px solid #e5e5e5; border-radius: 8px; padding: 16px; transition: border-color 0.15s; position: relative;"
-    onmouseover="this.style.borderColor='#d1d5db';"
-    onmouseout="this.style.borderColor='#e5e5e5';">
+    onmouseover="this.style.borderColor='#d1d5db';" onmouseout="this.style.borderColor='#e5e5e5';">
 
     <!-- Highlight text - clickable to detail page -->
     <a href="/highlights/{{ highlight.id }}" style="text-decoration: none; color: inherit; display: block;">
         <p style="font-size: 15px; line-height: 1.6; color: #1a1a1a; margin: 0 0 8px 0;">{{ highlight.text }}</p>
-        
+
         <!-- Note preview (first ~200 chars) -->
         {% if highlight.note %}
         <p style="font-size: 14px; line-height: 1.5; color: #6b7280; font-style: italic; margin: 0 0 12px 0;">
             {% if highlight.note|length > 200 %}
-                {{ highlight.note[:200] }}...
+            {{ highlight.note[:200] }}...
             {% else %}
-                {{ highlight.note }}
+            {{ highlight.note }}
             {% endif %}
         </p>
         {% endif %}
@@ -23,49 +22,47 @@
         <div style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
             <!-- Source -->
             {% if highlight.source %}
-            <a href="/search?source_id={{ highlight.source.id }}" 
+            <a href="/search?source_id={{ highlight.source.id }}"
                 style="color: #6b7280; text-decoration: none; transition: color 0.15s;"
-                onmouseover="this.style.color='#111827';"
-                onmouseout="this.style.color='#6b7280';">
+                onmouseover="this.style.color='#111827';" onmouseout="this.style.color='#6b7280';">
                 {% if highlight.source.type.value == 'web' %}
-                    {{ highlight.source.domain }}
+                {{ highlight.source.domain }}
                 {% else %}
-                    {{ highlight.source.title }}
+                {{ highlight.source.title }}
                 {% endif %}
             </a>
             {% endif %}
-            
+
             <!-- Collections -->
             {% if highlight.collections %}
-                {% if highlight.source %}<span style="color: #d1d5db;">·</span>{% endif %}
-                {% for collection in highlight.collections %}
-                <a href="/search?collection_id={{ collection.id }}" 
-                    style="padding: 2px 8px; background: #fef3c7; color: #92400e; border-radius: 10px; font-size: 12px; text-decoration: none; font-weight: 500; transition: background 0.15s; line-height: 1.2;"
-                    onmouseover="this.style.background='#fde68a';"
-                    onmouseout="this.style.background='#fef3c7';">
-                    {{ collection.name }}
-                </a>
-                {% endfor %}
+            {% if highlight.source %}<span style="color: #d1d5db;">·</span>{% endif %}
+            {% for collection in highlight.collections %}
+            <a href="/search?collection_id={{ collection.id }}"
+                style="padding: 2px 8px; background: #fef3c7; color: #92400e; border-radius: 10px; font-size: 12px; text-decoration: none; font-weight: 500; transition: background 0.15s; line-height: 1.2;"
+                onmouseover="this.style.background='#fde68a';" onmouseout="this.style.background='#fef3c7';">
+                {{ collection.name }}
+            </a>
+            {% endfor %}
             {% endif %}
-            
+
             <!-- Tags -->
             {% if highlight.tags %}
-                {% if highlight.source or highlight.collections %}<span style="color: #d1d5db;">·</span>{% endif %}
-                {% for tag in highlight.tags %}
-                <a href="/search?tag={{ tag.name }}" 
-                    style="padding: 2px 8px; background: #eff6ff; color: #1e40af; border-radius: 10px; font-size: 12px; text-decoration: none; font-weight: 500; transition: background 0.15s; line-height: 1.2;"
-                    onmouseover="this.style.background='#dbeafe';"
-                    onmouseout="this.style.background='#eff6ff';">
-                    {{ tag.name }}
-                </a>
-                {% endfor %}
+            {% if highlight.source or highlight.collections %}<span style="color: #d1d5db;">·</span>{% endif %}
+            {% for tag in highlight.tags %}
+            <a href="/search?tag={{ tag.name }}"
+                style="padding: 2px 8px; background: #eff6ff; color: #1e40af; border-radius: 10px; font-size: 12px; text-decoration: none; font-weight: 500; transition: background 0.15s; line-height: 1.2;"
+                onmouseover="this.style.background='#dbeafe';" onmouseout="this.style.background='#eff6ff';">
+                {{ tag.name }}
+            </a>
+            {% endfor %}
             {% endif %}
         </div>
-        
+
         <!-- Date & Favorite -->
         <div style="display: flex; align-items: center; gap: 10px; white-space: nowrap;">
             <span style="color: #9ca3af;">{{ highlight.created_at.strftime('%b %Y') }}</span>
-            <button id="fav-btn-{{ highlight.id }}" hx-put="/highlights/{{ highlight.id }}/favorite" hx-target="#fav-icon-{{ highlight.id }}" hx-swap="innerHTML swap:0.1s"
+            <button id="fav-btn-{{ highlight.id }}" hx-put="/highlights/{{ highlight.id }}/favorite"
+                hx-target="#fav-icon-{{ highlight.id }}" hx-swap="innerHTML swap:0.1s"
                 title="{% if highlight.is_favorite %}Unfavorite{% else %}Favorite{% endif %}"
                 style="background: none; border: none; padding: 4px; cursor: pointer; color: {% if highlight.is_favorite %}#6b7280{% else %}#d1d5db{% endif %}; font-size: 18px; line-height: 1; display: inline-flex; align-items: center; transition: color 0.15s;"
                 onmouseover="this.style.color='{% if highlight.is_favorite %}#1f2937{% else %}#9ca3af{% endif %}';"
@@ -73,7 +70,8 @@
                 hx-disabled-elt="this"
                 hx-on::before-request="document.getElementById('fav-icon-{{ highlight.id }}').innerHTML = '<span class=&quot;spinner&quot; style=&quot;color: #9ca3af; font-size: 14px;&quot;>●</span>';"
                 hx-on::after-swap="const btn = document.getElementById('fav-btn-{{ highlight.id }}'); const icon = document.getElementById('fav-icon-{{ highlight.id }}'); if(icon.textContent === '♥') { btn.style.color = '#6b7280'; btn.title = 'Unfavorite'; } else { btn.style.color = '#d1d5db'; btn.title = 'Favorite'; }">
-                <span id="fav-icon-{{ highlight.id }}" aria-hidden="true">{% if highlight.is_favorite %}♥{% else %}♡{% endif %}</span>
+                <span id="fav-icon-{{ highlight.id }}" aria-hidden="true">{% if highlight.is_favorite %}♥{% else %}♡{%
+                    endif %}</span>
             </button>
         </div>
     </div>

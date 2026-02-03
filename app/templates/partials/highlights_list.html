@@ -1,8 +1,8 @@
 {% if highlights %}
 <div style="display: grid; gap: 12px;">
-{% for highlight in highlights %}
-{% include "partials/highlight_item.html" %}
-{% endfor %}
+    {% for highlight in highlights %}
+    {% include "partials/highlight_item.html" %}
+    {% endfor %}
 </div>
 {% else %}
 <p style="color: #666; text-align: center; padding: 40px 0;">No highlights yet. Add your first one above!</p>
