@@ -3,7 +3,7 @@
 {% block content %}
 <!-- Quick Add with Progressive Disclosure -->
 <div class="card" style="margin-bottom: 32px;">
-    <form id="quick-add-form" hx-post="/highlights" hx-target="#highlights-list" hx-swap="afterbegin"
+    <form id="quick-add-form" hx-post="/highlights" hx-target="#highlights-list .stack" hx-swap="afterbegin"
         hx-on::after-request="this.reset(); hideExtraFields()">
         <div class="form-group" style="margin-bottom: 0;">
             <textarea id="highlight-text" name="text" rows="3" placeholder="Paste a highlight to save it..."
@@ -11,22 +11,19 @@
         </div>
 
         <!-- Extra fields - hidden until text is entered -->
-        <div id="extra-fields"
-            style="display: none; margin-top: 16px; padding-top: 16px; border-top: 1px solid #f0f0f0;">
+        <div id="extra-fields" class="section-divider" style="display: none;">
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
-                <input type="text" name="tags" placeholder="Tags (comma-separated)" style="font-size: 14px;">
-                <input type="text" name="note" placeholder="Your note (why it matters)" style="font-size: 14px;">
+                <input type="text" name="tags" placeholder="Tags (comma-separated)">
+                <input type="text" name="note" placeholder="Your note (why it matters)">
             </div>
 
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;">
-                <input type="text" name="source_url" placeholder="URL (for web)" style="font-size: 14px;">
-                <input type="text" name="source_title" placeholder="Title (for books)" style="font-size: 14px;">
+                <input type="text" name="source_url" placeholder="URL (for web)">
+                <input type="text" name="source_title" placeholder="Title (for books)">
             </div>
 
-            <div style="display: flex; justify-content: flex-end;">
-                <button type="submit" style="padding: 12px 20px; border-radius: 8px; background: white; color: #6b7280; border: 1px solid #e5e5e5; font-weight: 600; letter-spacing: 0.01em; transition: all 0.15s;"
-                    onmouseover="this.style.borderColor='#d1d5db'; this.style.background='#f9fafb';"
-                    onmouseout="this.style.borderColor='#e5e5e5'; this.style.background='white';">
+            <div class="form-actions">
+                <button type="submit" class="btn btn--ghost">
                     Save Highlight
                     <span class="htmx-indicator">...</span>
                 </button>
@@ -36,9 +33,9 @@
 </div>
 
 <!-- Recent Highlights -->
-<div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 16px;">
-    <h2 style="font-size: 18px; font-weight: 600; color: #1a1a1a;">Recent Highlights</h2>
-    <small style="color: #999; font-size: 13px;">{{ highlights|length }} total</small>
+<div class="section-header">
+    <h2 class="section-title">Recent Highlights</h2>
+    <small class="section-meta">{{ highlights|length }} total</small>
 </div>
 
 <div id="highlights-list">

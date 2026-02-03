@@ -3,13 +3,12 @@
     <form hx-post="/highlights/{{ highlight.id }}/tags" hx-target="#highlight-view" hx-swap="outerHTML"
         hx-on::after-request="document.getElementById('tag-modal').style.display='none'">
         <div class="form-group" style="margin-bottom: 16px;">
-            <input type="text" name="tag_name" placeholder="Enter tag name" autofocus required
-                style="width: 100%; padding: 10px; border: 1px solid #e5e5e5; border-radius: 6px; font-size: 14px;">
+            <input type="text" name="tag_name" placeholder="Enter tag name" autofocus required>
         </div>
-        <div style="display: flex; gap: 8px; justify-content: flex-end;">
+        <div class="row" style="gap: 8px; justify-content: flex-end;">
             <button type="button" onclick="document.getElementById('tag-modal').style.display='none'"
-                class="secondary">Cancel</button>
-            <button type="submit">Add Tag</button>
+                class="btn btn--ghost btn--sm">Cancel</button>
+            <button type="submit" class="btn btn--ghost btn--sm">Add Tag</button>
         </div>
     </form>
 </div>

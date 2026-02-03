@@ -4,12 +4,12 @@
 
 {% block content %}
 <div class="card">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
-        <h2 style="margin: 0;">Sources</h2>
+    <div class="row-between" style="margin-bottom: 24px;">
+        <h2 class="section-title" style="margin: 0;">Sources</h2>
 
         <!-- Filters -->
-        <div style="display: flex; gap: 12px; align-items: center;">
-            <select id="type-filter" style="padding: 6px 10px; font-size: 13px; border-radius: 6px; width: auto;">
+        <div class="row" style="gap: 12px;">
+            <select id="type-filter" class="select-compact">
                 <option value="">All Types</option>
                 <option value="book">Books</option>
                 <option value="web">Web</option>
@@ -17,12 +17,12 @@
                 <option value="podcast">Podcasts</option>
             </select>
 
-            <select id="favorites-filter" style="padding: 6px 10px; font-size: 13px; border-radius: 6px; width: auto;">
+            <select id="favorites-filter" class="select-compact">
                 <option value="">All Sources</option>
                 <option value="favorites">Has Favorites</option>
             </select>
 
-            <select id="sort-by" style="padding: 6px 10px; font-size: 13px; border-radius: 6px; width: auto;">
+            <select id="sort-by" class="select-compact">
                 <option value="recent-desc">Recent First</option>
                 <option value="recent-asc">Oldest First</option>
                 <option value="highlights-desc">Most Highlights</option>
@@ -34,29 +34,26 @@
     </div>
 
     {% if sources %}
-    <div id="sources-list" style="display: grid; gap: 12px;">
+    <div id="sources-list" class="stack">
         {% for source in sources %}
-        <div style="border: 1px solid #e5e5e5; padding: 16px; border-radius: 8px; cursor: pointer; transition: all 0.15s;"
+        <div class="list-card clickable"
             data-type="{{ source.type.value }}" data-highlights="{{ source.highlights|length }}"
             data-favorites="{{ source.highlights|selectattr('is_favorite')|list|length }}"
-            onclick="window.location='/sources/{{ source.id }}'"
-            onmouseover="this.style.borderColor='#d1d5db'; this.style.background='#fafafa';"
-            onmouseout="this.style.borderColor='#e5e5e5'; this.style.background='white';">
-            <div style="display: flex; justify-content: space-between; align-items: start; gap: 16px;">
+            onclick="window.location='/sources/{{ source.id }}'">
+            <div class="row-between" style="align-items: start;">
                 <div style="flex: 1; min-width: 0;">
                     <h3 style="font-size: 15px; margin-bottom: 6px; font-weight: 600;">{{ source.title }}</h3>
                     {% if source.author %}
-                    <p style="color: #6b7280; font-size: 13px; margin-bottom: 8px;">{{ source.author }}</p>
+                    <p class="muted" style="font-size: 13px; margin-bottom: 8px;">{{ source.author }}</p>
                     {% endif %}
-                    <div style="display: flex; gap: 12px; font-size: 13px; color: #9ca3af; align-items: center;">
-                        <span style="text-transform: capitalize;">{{ source.type.value }}</span>
-                        <span style="color: #d1d5db;">·</span>
-                        <span>{{ source.highlights|length }} highlight{% if source.highlights|length != 1 %}s{% endif
-                            %}</span>
+                    <div class="row" style="gap: 12px; font-size: 13px;">
+                        <span class="muted-2" style="text-transform: capitalize;">{{ source.type.value }}</span>
+                        <span class="meta-divider">·</span>
+                        <span class="muted-2">{{ source.highlights|length }} highlight{% if source.highlights|length != 1 %}s{% endif %}</span>
                         {% set favorite_count = source.highlights|selectattr('is_favorite')|list|length %}
                         {% if favorite_count > 0 %}
-                        <span style="color: #d1d5db;">·</span>
-                        <span style="color: #6b7280;">♥ {{ favorite_count }}</span>
+                        <span class="meta-divider">·</span>
+                        <span class="muted">♥ {{ favorite_count }}</span>
                         {% endif %}
                     </div>
                 </div>
@@ -65,7 +62,7 @@
         {% endfor %}
     </div>
     {% else %}
-    <p style="color: #9ca3af; text-align: center; padding: 40px 0;">No sources yet. Add highlights with source
+    <p class="muted-2" style="text-align: center; padding: 40px 0;">No sources yet. Add highlights with source
         information to see them here.</p>
     {% endif %}
 </div>

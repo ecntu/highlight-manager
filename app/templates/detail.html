@@ -3,36 +3,6 @@
 {% block title %}Highlight{% endblock %}
 
 {% block content %}
-<style>
-    /* Override base button styles for icon buttons */
-    #highlight-view .action-btn:hover {
-        background: #f5f5f5;
-        color: #1a1a1a;
-        transform: none;
-        box-shadow: none;
-    }
-
-    #highlight-view .action-btn:active {
-        transform: none;
-    }
-
-    #highlight-view .action-btn.favorite:hover {
-        color: #f59e0b;
-    }
-
-    /* Pill button hover states */
-    .pill-btn:hover {
-        background: #f9fafb;
-        border-color: #d1d5db;
-        transform: none;
-        box-shadow: none;
-    }
-
-    .pill-btn:active {
-        transform: none;
-    }
-</style>
-
 {% include 'partials/highlight_card.html' %}
 
 <!-- Collection Picker Modal -->
@@ -55,6 +25,7 @@
     function showAddToCollection() {
         const modal = document.getElementById('collection-modal');
         modal.style.display = 'flex';
+        const container = document.getElementById('collection-list');
 
         fetch('/collections')
             .then(r => r.text())
@@ -62,33 +33,31 @@
                 const parser = new DOMParser();
                 const doc = parser.parseFromString(html, 'text/html');
                 const currentCollections = [{% for c in highlight.collections %}'{{ c.id }}'{% if not loop.last %}, {% endif %} {% endfor %}];
-    const highlightId = '{{ highlight.id }}';
+                const highlightId = '{{ highlight.id }}';
 
-    const allCollections = doc.querySelectorAll('#collections-list > div > div');
-    const container = document.getElementById('collection-list');
+                const allCollections = doc.querySelectorAll('[data-collection-id]');
+                if (allCollections.length === 0) {
+                    container.innerHTML = '<p style="color: #6b7280; font-size: 14px;">No collections yet. <a href="/collections" style="color: #3b82f6; text-decoration: none; font-weight: 500;">Create one</a>.</p>';
+                } else {
+                    let buttons = '';
+                    allCollections.forEach(col => {
+                        const collectionId = col.dataset.collectionId;
+                        const collectionName = col.dataset.collectionName || col.querySelector('h3')?.textContent?.trim() || 'Untitled';
+                        const isIn = currentCollections.includes(collectionId);
 
-    if (allCollections.length === 0) {
-        container.innerHTML = '<p style="color: #6b7280; font-size: 14px;">No collections yet. <a href="/collections" style="color: #3b82f6; text-decoration: none; font-weight: 500;">Create one</a>.</p>';
-    } else {
-        let buttons = '';
-        allCollections.forEach(col => {
-            const link = col.querySelector('a[href^="/collections/"]');
-            const collectionId = link.href.split('/').pop();
-            const collectionName = link.textContent.trim();
-            const isIn = currentCollections.includes(collectionId);
-
-            buttons += `<button 
-                        onclick="addToCollection('${collectionId}', '${highlightId}')" 
-                        style="width: 100%; padding: 14px 16px; margin-bottom: 8px; background: ${isIn ? '#f3f4f6' : 'white'}; color: ${isIn ? '#9ca3af' : '#1a1a1a'}; border: 1px solid ${isIn ? '#e5e7eb' : '#e5e5e5'}; border-radius: 10px; cursor: ${isIn ? 'not-allowed' : 'pointer'}; text-align: left; font-size: 14px; font-weight: 500; transition: all 0.15s;"
-                        onmouseover="if(!this.disabled) this.style.borderColor='#3b82f6'; if(!this.disabled) this.style.boxShadow='0 0 0 3px rgba(59, 130, 246, 0.1)';"
-                        onmouseout="if(!this.disabled) this.style.borderColor='#e5e5e5'; if(!this.disabled) this.style.boxShadow='none';"
-                        ${isIn ? 'disabled' : ''}>
-                        ${isIn ? '<span style="color: #10b981; margin-right: 6px;">✓</span>' : ''}${collectionName}
-                    </button>`;
-        });
-        container.innerHTML = buttons;
-    }
-        });
+                        buttons += `<button 
+                                    onclick="addToCollection('${collectionId}', '${highlightId}')" 
+                                    class="modal-btn"
+                                    ${isIn ? 'disabled' : ''}>
+                                    ${isIn ? '<span style="color: #10b981; margin-right: 6px;">✓</span>' : ''}${collectionName}
+                                </button>`;
+                    });
+                    container.innerHTML = buttons;
+                }
+            })
+            .catch(() => {
+                container.innerHTML = '<p style="color: #6b7280; font-size: 14px;">Unable to load collections.</p>';
+            });
 }
 
     function addToCollection(collectionId, highlightId) {

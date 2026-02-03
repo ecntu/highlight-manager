@@ -12,11 +12,36 @@
             box-sizing: border-box;
         }
 
+        :root {
+            --bg: #fafafa;
+            --panel: #ffffff;
+            --panel-subtle: #f8f8f8;
+            --border: #e5e5e5;
+            --border-strong: #d1d5db;
+            --text: #1a1a1a;
+            --text-strong: #111827;
+            --muted: #6b7280;
+            --muted-2: #9ca3af;
+            --accent: #3b82f6;
+            --accent-strong: #2563eb;
+            --accent-ring: rgba(59, 130, 246, 0.12);
+            --amber-bg: #fef3c7;
+            --amber-text: #92400e;
+            --blue-bg: #eff6ff;
+            --blue-text: #1e40af;
+            --danger: #b91c1c;
+            --success: #10b981;
+            --radius-lg: 12px;
+            --radius-md: 10px;
+            --radius-sm: 8px;
+            --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
+        }
+
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             line-height: 1.6;
-            color: #1a1a1a;
-            background: #fafafa;
+            color: var(--text);
+            background: var(--bg);
         }
 
         .container {
@@ -27,8 +52,8 @@
 
         /* Modern Header */
         header {
-            background: white;
-            border-bottom: 1px solid #e5e5e5;
+            background: var(--panel);
+            border-bottom: 1px solid var(--border);
             position: sticky;
             top: 0;
             z-index: 100;
@@ -53,19 +78,19 @@
 
         .nav-search input {
             width: 100%;
-            padding: 8px 12px 8px 36px;
-            border: 1px solid #e5e5e5;
-            border-radius: 8px;
+            padding: 8px 44px 8px 36px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
             font-size: 14px;
-            background: #f8f8f8;
+            background: var(--panel-subtle);
             transition: all 0.2s;
         }
 
         .nav-search input:focus {
             outline: none;
-            border-color: #3b82f6;
-            background: white;
-            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+            border-color: var(--accent);
+            background: var(--panel);
+            box-shadow: 0 0 0 3px var(--accent-ring);
         }
 
         .nav-search svg {
@@ -73,9 +98,24 @@
             left: 12px;
             top: 50%;
             transform: translateY(-50%);
-            color: #999;
+            color: var(--muted-2);
             width: 16px;
             height: 16px;
+        }
+
+        .key-hint {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            padding: 2px 6px;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            background: #ffffff;
+            color: var(--muted-2);
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 0.02em;
         }
 
         /* Search Dropdown */
@@ -84,9 +124,9 @@
             top: calc(100% + 8px);
             left: 0;
             right: 0;
-            background: white;
-            border: 1px solid #e5e5e5;
-            border-radius: 8px;
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
             max-height: 400px;
             overflow-y: auto;
@@ -105,7 +145,7 @@
         }
 
         .search-dropdown-item:hover {
-            background: #f8f8f8;
+            background: var(--panel-subtle);
         }
 
         .search-dropdown-item:last-child {
@@ -115,12 +155,12 @@
         .search-dropdown-footer {
             padding: 8px 16px;
             text-align: center;
-            border-top: 1px solid #e5e5e5;
-            background: #f8f8f8;
+            border-top: 1px solid var(--border);
+            background: var(--panel-subtle);
         }
 
         .search-dropdown-footer a {
-            color: #3b82f6;
+            color: var(--accent);
             text-decoration: none;
             font-size: 13px;
             font-weight: 500;
@@ -139,7 +179,7 @@
             gap: 6px;
             padding: 8px 12px;
             text-decoration: none;
-            color: #666;
+            color: var(--muted);
             border-radius: 6px;
             font-size: 14px;
             font-weight: 500;
@@ -147,7 +187,7 @@
         }
 
         nav a:hover {
-            color: #1a1a1a;
+            color: var(--text);
             background: #f5f5f5;
         }
 
@@ -159,18 +199,18 @@
         nav .user-menu {
             margin-left: 8px;
             padding-left: 16px;
-            border-left: 1px solid #e5e5e5;
-            color: #999;
+            border-left: 1px solid var(--border);
+            color: var(--muted-2);
             font-size: 13px;
         }
 
         .card {
-            background: white;
-            border-radius: 12px;
+            background: var(--panel);
+            border-radius: var(--radius-lg);
             padding: 24px;
             margin-bottom: 24px;
-            border: 1px solid #e5e5e5;
-            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow-sm);
         }
 
         .form-group {
@@ -182,7 +222,7 @@
             margin-bottom: 6px;
             font-weight: 500;
             font-size: 14px;
-            color: #1a1a1a;
+            color: var(--text);
         }
 
         input,
@@ -190,8 +230,8 @@
         select {
             width: 100%;
             padding: 10px 12px;
-            border: 1px solid #e5e5e5;
-            border-radius: 8px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
             font-size: 14px;
             font-family: inherit;
             transition: all 0.2s;
@@ -201,16 +241,16 @@
         textarea:focus,
         select:focus {
             outline: none;
-            border-color: #3b82f6;
-            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px var(--accent-ring);
         }
 
         button {
-            background: #3b82f6;
+            background: var(--accent);
             color: white;
             border: none;
             padding: 10px 20px;
-            border-radius: 8px;
+            border-radius: var(--radius-sm);
             cursor: pointer;
             font-size: 14px;
             font-weight: 500;
@@ -218,7 +258,7 @@
         }
 
         button:hover {
-            background: #2563eb;
+            background: var(--accent-strong);
         }
 
         button:active {
@@ -240,9 +280,302 @@
         }
 
         .success {
-            color: #10b981;
+            color: var(--success);
             font-size: 14px;
             margin-top: 5px;
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            margin-bottom: 16px;
+            gap: 12px;
+        }
+
+        .section-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text);
+            margin: 0;
+        }
+
+        .section-meta {
+            color: var(--muted-2);
+            font-size: 13px;
+        }
+
+        .muted {
+            color: var(--muted);
+        }
+
+        .muted-2 {
+            color: var(--muted-2);
+        }
+
+        .stack {
+            display: grid;
+            gap: 12px;
+        }
+
+        .section-divider {
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid #f0f0f0;
+        }
+
+        .row {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .row-between {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .form-actions {
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 16px;
+            border-radius: var(--radius-sm);
+            font-weight: 600;
+            font-size: 14px;
+            border: 1px solid transparent;
+            cursor: pointer;
+            transition: all 0.15s;
+            background: var(--accent);
+            color: white;
+        }
+
+        .btn:hover {
+            background: var(--accent-strong);
+        }
+
+        .btn--ghost {
+            background: var(--panel);
+            color: var(--muted);
+            border-color: var(--border);
+        }
+
+        .btn--ghost:hover {
+            background: #f9fafb;
+            border-color: var(--border-strong);
+            color: var(--text);
+        }
+
+        .btn--danger {
+            background: #dc2626;
+            border-color: #dc2626;
+            color: #ffffff;
+        }
+
+        .btn--danger:hover {
+            background: #b91c1c;
+            border-color: #b91c1c;
+        }
+
+        .btn--sm {
+            padding: 6px 12px;
+            font-size: 13px;
+            border-radius: 6px;
+        }
+
+        .select-compact {
+            padding: 6px 10px;
+            font-size: 13px;
+            border-radius: 6px;
+            width: auto;
+        }
+
+        .input-lg {
+            font-size: 15px;
+            padding: 10px 14px;
+        }
+
+        .icon-btn {
+            background: none;
+            border: none;
+            padding: 2px;
+            border-radius: 6px;
+            cursor: pointer;
+            color: var(--muted);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 20px;
+            height: 20px;
+            line-height: 1;
+            transition: all 0.15s;
+        }
+
+        .icon-btn:hover {
+            background: #f5f5f5;
+            color: var(--text);
+        }
+
+        .icon-btn.fav-toggle:hover {
+            color: #111827;
+            background: #f5f5f5;
+        }
+
+        .icon-btn.fav-toggle[data-fav="true"] {
+            color: var(--muted);
+        }
+
+        .icon-btn.fav-toggle[data-fav="true"]:hover {
+            color: var(--text);
+        }
+
+        .icon-btn.danger:hover {
+            color: var(--danger);
+        }
+
+        .icon {
+            width: 16px;
+            height: 16px;
+            stroke-width: 1.75;
+        }
+
+        .icon-lg {
+            width: 18px;
+            height: 18px;
+            stroke-width: 1.75;
+        }
+
+        .icon-xs {
+            width: 12px;
+            height: 12px;
+            stroke-width: 1.75;
+        }
+
+        .icon path {
+            stroke-width: 1.75;
+        }
+
+        .pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 2px 8px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 500;
+            line-height: 1.2;
+            white-space: nowrap;
+            text-decoration: none;
+            min-height: 20px;
+        }
+
+        .pill:hover {
+            filter: brightness(0.98);
+        }
+
+        .pill--amber {
+            background: var(--amber-bg);
+            color: var(--amber-text);
+        }
+
+        .pill--blue {
+            background: var(--blue-bg);
+            color: var(--blue-text);
+        }
+
+        .pill--neutral {
+            background: #f3f4f6;
+            color: var(--muted);
+        }
+
+        .pill--danger {
+            background: #fee2e2;
+            color: #dc2626;
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .pill-btn {
+            border: 1px solid var(--border);
+            background: var(--panel);
+            color: var(--muted);
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .pill-btn:hover {
+            border-color: var(--border-strong);
+            background: #f9fafb;
+            color: var(--text);
+        }
+
+        .list-card {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            padding: 16px;
+            transition: all 0.15s;
+        }
+
+        .list-card:hover {
+            border-color: var(--border-strong);
+            background: #fafafa;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .list-card.clickable {
+            cursor: pointer;
+        }
+
+        .modal-btn {
+            width: 100%;
+            padding: 14px 16px;
+            margin-bottom: 8px;
+            background: var(--panel);
+            color: var(--text);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            text-align: left;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.15s;
+        }
+
+        .modal-btn:hover {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px var(--accent-ring);
+        }
+
+        .modal-btn:disabled {
+            background: #f3f4f6;
+            color: var(--muted-2);
+            border-color: #e5e7eb;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        .meta-divider {
+            color: #d1d5db;
+        }
+
+        .kbd {
+            font-family: ui-monospace, SFMono-Regular, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+            font-size: 11px;
+            padding: 2px 6px;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            background: var(--panel);
+            color: var(--muted-2);
         }
 
         .htmx-indicator {
@@ -266,8 +599,8 @@
         /* Search highlight styling */
         .search-dropdown strong,
         #search-results strong {
-            background: #fef3c7;
-            color: #92400e;
+            background: var(--amber-bg);
+            color: var(--amber-text);
             font-weight: 600;
             padding: 0 2px;
         }
@@ -296,7 +629,8 @@
     <header>
         <div class="container">
             <div class="nav-search">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg class="icon-lg" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                    stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                         d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                 </svg>
@@ -304,13 +638,15 @@
                     hx-get="/api/search-quick" hx-trigger="keyup changed delay:300ms" hx-target="#nav-search-results"
                     hx-include="#nav-search" autocomplete="off"
                     onkeydown="if(event.key === 'Enter') { event.preventDefault(); window.location.href = '/search?q=' + encodeURIComponent(this.value); } else if(event.key === 'Escape') { this.value = ''; document.getElementById('nav-search-results').classList.remove('active'); }">
+                <span class="key-hint">⌘K</span>
                 <div id="nav-search-results" class="search-dropdown"></div>
             </div>
 
             <nav>
                 {% if request.url.path != '/highlights' %}
                 <a href="/highlights">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <svg class="icon-lg" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                             d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
                     </svg>
@@ -318,21 +654,24 @@
                 </a>
                 {% endif %}
                 <a href="/sources">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <svg class="icon-lg" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                             d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
                     </svg>
                     Sources
                 </a>
                 <a href="/collections">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <svg class="icon-lg" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                             d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
                     </svg>
                     Collections
                 </a>
                 <a href="/settings">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <svg class="icon-lg" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                             d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"

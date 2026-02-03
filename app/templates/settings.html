@@ -4,19 +4,14 @@
 <h1 style="margin-bottom: 24px; font-size: 24px; font-weight: 600;">Settings</h1>
 
 <div class="card">
-    <h2 style="font-size: 18px; font-weight: 600; margin-bottom: 16px;">Account</h2>
-    <p style="color: #6b7280; margin-bottom: 20px; font-size: 14px;">Signed in as <strong style="color: #1a1a1a;">{{
-            current_user.username }}</strong></p>
-    <a href="/logout"
-        style="display: inline-block; padding: 8px 16px; background: white; border: 1px solid #e5e5e5; color: #6b7280; text-decoration: none; border-radius: 6px; font-size: 14px; font-weight: 500; transition: all 0.15s;"
-        onmouseover="this.style.borderColor='#d1d5db'; this.style.background='#f9fafb';"
-        onmouseout="this.style.borderColor='#e5e5e5'; this.style.background='white';">
-        Logout
-    </a>
+    <h2 class="section-title" style="margin-bottom: 16px;">Account</h2>
+    <p class="muted" style="margin-bottom: 20px; font-size: 14px;">Signed in as <strong
+            style="color: #1a1a1a;">{{ current_user.username }}</strong></p>
+    <a href="/logout" class="btn btn--ghost btn--sm" style="text-decoration: none;">Logout</a>
 </div>
 
 <div class="card">
-    <h2 style="margin-bottom: 20px; font-size: 18px; font-weight: 600;">Device API Keys</h2>
+    <h2 class="section-title" style="margin-bottom: 20px;">Device API Keys</h2>
 
     {% if new_api_key %}
     <div
@@ -29,12 +24,10 @@
     {% endif %}
 
     <form hx-post="/devices" hx-target="#devices-table" hx-swap="outerHTML" style="margin-bottom: 28px;">
-        <div style="display: flex; gap: 10px;">
+        <div class="row">
             <input type="text" name="name" placeholder="Device name (e.g., iPhone, MacBook)" required
-                style="flex: 1; font-size: 14px;">
-            <button type="submit" style="width: auto; padding: 10px 16px; border-radius: 8px; background: white; color: #6b7280; border: 1px solid #e5e5e5; font-weight: 600; transition: all 0.15s;"
-                onmouseover="this.style.borderColor='#d1d5db'; this.style.background='#f9fafb';"
-                onmouseout="this.style.borderColor='#e5e5e5'; this.style.background='white';">
+                style="flex: 1;">
+            <button type="submit" class="btn btn--ghost">
                 Create Device Key
                 <span class="htmx-indicator">...</span>
             </button>

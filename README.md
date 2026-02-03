@@ -23,3 +23,10 @@ uv run uvicorn app.main:app --reload
 ```
 
 Visit http://localhost:8000
+
+## TODOs
+- [ ] fix mobile ui
+- [ ] test MoonReader sync
+- [ ] allow for editing highlights and source names while avoiding duplicates on re-import
+- [ ] resurfacing features (reminders, random, digests)
+- [ ] read-only API keys to export / mcp

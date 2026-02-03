@@ -1,17 +1,15 @@
-<div style="padding: 16px; border: 1px solid #e5e5e5; border-radius: 8px; cursor: pointer; transition: all 0.15s;"
-    onclick="window.location='/collections/{{ collection.id }}'"
-    onmouseover="this.style.borderColor='#d1d5db'; this.style.background='#fafafa';"
-    onmouseout="this.style.borderColor='#e5e5e5'; this.style.background='white';">
-    <div style="display: flex; justify-content: space-between; align-items: start; gap: 16px;">
+<div class="list-card clickable" data-collection-id="{{ collection.id }}" data-collection-name="{{ collection.name }}"
+    onclick="window.location='/collections/{{ collection.id }}'">
+    <div class="row-between" style="align-items: start;">
         <div style="flex: 1; min-width: 0;">
             <h3 style="margin-bottom: 6px; font-size: 15px; font-weight: 600;">
                 {{ collection.name }}
             </h3>
             {% if collection.description %}
-            <p style="color: #6b7280; font-size: 13px; margin-bottom: 8px; line-height: 1.4;">{{ collection.description
-                }}</p>
+            <p class="muted" style="font-size: 13px; margin-bottom: 8px; line-height: 1.4;">{{ collection.description }}
+            </p>
             {% endif %}
-            <div style="font-size: 13px; color: #9ca3af;">
+            <div class="muted-2" style="font-size: 13px;">
                 {{ collection.highlights|length }} highlight{% if collection.highlights|length != 1 %}s{% endif %}
             </div>
         </div>

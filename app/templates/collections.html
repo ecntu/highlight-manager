@@ -2,36 +2,34 @@
 
 {% block content %}
 <div class="card">
-    <h2 style="margin-bottom: 20px; font-size: 18px; font-weight: 600;">Create Collection</h2>
+    <h2 class="section-title" style="margin-bottom: 20px;">Create Collection</h2>
     <form hx-post="/collections" hx-target="#collections-list" hx-swap="afterbegin" hx-on::after-request="this.reset()">
-        <div style="display: grid; gap: 12px; margin-bottom: 16px;">
-            <input type="text" name="name" placeholder="Collection name" required autofocus style="font-size: 14px;">
+        <div class="stack" style="margin-bottom: 16px;">
+            <input type="text" name="name" placeholder="Collection name" required autofocus>
             <textarea name="description" rows="2" placeholder="Description (optional)"
-                style="font-size: 14px; resize: vertical;"></textarea>
+                style="resize: vertical;"></textarea>
         </div>
-        <button type="submit" style="width: auto; padding: 10px 16px; border-radius: 8px; background: white; color: #6b7280; border: 1px solid #e5e5e5; font-weight: 600; transition: all 0.15s;"
-            onmouseover="this.style.borderColor='#d1d5db'; this.style.background='#f9fafb';"
-            onmouseout="this.style.borderColor='#e5e5e5'; this.style.background='white';">
-            Create Collection
-            <span class="htmx-indicator">...</span>
-        </button>
+        <div class="form-actions">
+            <button type="submit" class="btn btn--ghost">
+                Create Collection
+                <span class="htmx-indicator">...</span>
+            </button>
+        </div>
     </form>
 </div>
 
 <div class="card">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-        <h2 style="margin: 0; font-size: 18px; font-weight: 600;">Your Collections</h2>
-        <small style="color: #9ca3af; font-size: 13px;">{{ collections|length }} total</small>
+    <div class="section-header">
+        <h2 class="section-title">Your Collections</h2>
+        <small class="section-meta">{{ collections|length }} total</small>
     </div>
-    <div id="collections-list">
+    <div id="collections-list" class="stack">
         {% if collections %}
-        <div style="display: grid; gap: 12px;">
-            {% for collection in collections %}
-            {% include "partials/collection_item.html" %}
-            {% endfor %}
-        </div>
+        {% for collection in collections %}
+        {% include "partials/collection_item.html" %}
+        {% endfor %}
         {% else %}
-        <p style="color: #9ca3af; text-align: center; padding: 40px 0;">
+        <p class="muted-2" style="text-align: center; padding: 40px 0;">
             No collections yet. Create one above to organize your highlights.
         </p>
         {% endif %}

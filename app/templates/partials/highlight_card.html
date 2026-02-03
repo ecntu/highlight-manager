@@ -14,9 +14,8 @@
     {% endif %}
 
     <!-- Source, Date & Collections -->
-    <div
-        style="display: flex; justify-content: space-between; align-items: center; gap: 10px; font-size: 13px; color: #9ca3af; flex-wrap: wrap; margin-bottom: 6px;">
-        <div style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
+    <div class="row-between" style="font-size: 13px; flex-wrap: wrap; margin-bottom: 6px;">
+        <div class="row" style="gap: 6px; flex-wrap: wrap;">
             {% if highlight.source %}
             {% if highlight.source.type.value == 'web' %}
             {% if highlight.url %}
@@ -33,23 +32,21 @@
             {% endif %}
             {% endif %}
             {% if highlight.status.value == 'archived' %}
-            <span
-                style="padding: 2px 6px; background: #fee2e2; color: #dc2626; border-radius: 6px; font-size: 10px; font-weight: 600; text-transform: uppercase;">Archived</span>
+            <span class="pill pill--danger">Archived</span>
             {% endif %}
             {% if highlight.collections %}
-            {% if highlight.source %}<span style="color: #d1d5db;">·</span>{% endif %}
+            {% if highlight.source %}<span class="meta-divider">·</span>{% endif %}
             {% for collection in highlight.collections %}
             <a href="/collections/{{ collection.id }}"
-                style="padding: 2px 8px; background: #fef3c7; color: #92400e; border-radius: 10px; font-size: 12px; text-decoration: none; font-weight: 500; transition: background 0.15s; line-height: 1.2;">
+                class="pill pill--amber">
                 {{ collection.name }}
             </a>
             {% endfor %}
             {% endif %}
-            <button onclick="showAddToCollection()" title="Add to collection" class="pill-btn"
-                style="background: white; border: 1px solid #e5e5e5; padding: 2px 8px; cursor: pointer; color: #6b7280; font-size: 12px; border-radius: 10px; transition: all 0.15s; display: flex; align-items: center; gap: 3px; line-height: 1.2;">
+            <button onclick="showAddToCollection()" title="Add to collection" class="pill pill-btn">
                 <span style="font-size: 13px; line-height: 1;">+</span>
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2"
-                    stroke="currentColor" style="width: 12px; height: 12px;">
+                <svg class="icon-xs" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                    stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round"
                         d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
                 </svg>
@@ -57,40 +54,50 @@
             {% if highlight.tags or true %}
             {% if highlight.tags %}
             {% for tag in highlight.tags %}
-            <span
-                style="padding: 2px 8px; background: #eff6ff; color: #1e40af; border-radius: 10px; font-size: 12px; font-weight: 500; line-height: 1.2;">
+            <span class="pill pill--blue">
                 {{ tag.name }}
             </span>
             {% endfor %}
             {% endif %}
             <button hx-get="/highlights/{{ highlight.id }}/add-tag" hx-target="#tag-modal" hx-swap="innerHTML"
-                onclick="document.getElementById('tag-modal').style.display='flex'" title="Add tag" class="pill-btn"
-                style="background: white; border: 1px solid #e5e5e5; padding: 2px 8px; cursor: pointer; color: #6b7280; font-size: 12px; border-radius: 10px; transition: all 0.15s; font-weight: 500; display: flex; align-items: center; gap: 2px; line-height: 1.2;"><span>+</span><span>#</span></button>
+                onclick="document.getElementById('tag-modal').style.display='flex'" title="Add tag"
+                class="pill pill-btn"><span>+</span><span>#</span></button>
             {% endif %}
         </div>
 
         <!-- Date and action buttons on the right -->
-        <div style="display: flex; align-items: center; gap: 10px; white-space: nowrap;">
-            <span style="color: #9ca3af;">{{ highlight.created_at.strftime('%b %Y') }}</span>
+        <div class="row" style="gap: 10px; white-space: nowrap;">
+            <span class="muted-2">{{ highlight.created_at.strftime('%b %Y') }}</span>
 
             <!-- Action buttons -->
-            <div style="display: flex; gap: 6px;">
+            <div class="row" style="gap: 6px;">
                 <!-- Favorite button -->
-                <button hx-put="/highlights/{{ highlight.id }}/favorite" hx-target="this" hx-swap="innerHTML"
+                <button class="icon-btn fav-toggle" data-fav="{{ 'true' if highlight.is_favorite else 'false' }}"
+                    hx-put="/highlights/{{ highlight.id }}/favorite" hx-target="this" hx-swap="innerHTML"
                     hx-disabled-elt="this"
                     hx-on::before-request="this.style.pointerEvents='none'; this.innerHTML = '<span class=\'spinner\' style=\'display: inline-block; animation: spin 1s linear infinite; color: #9ca3af;\'>●</span>'"
-                    hx-on::after-swap="this.style.pointerEvents='auto'; this.style.color = this.innerHTML.trim() === '♥' ? '#6b7280' : '#d1d5db'"
-                    style="background: none; border: none; padding: 4px; cursor: pointer; font-size: 18px; transition: color 0.15s; color: {{ '#6b7280' if highlight.is_favorite else '#d1d5db' }};"
-                    onmouseover="this.style.color='{{ '#1f2937' if highlight.is_favorite else '#9ca3af' }}';"
-                    onmouseout="this.style.color='{{ '#6b7280' if highlight.is_favorite else '#d1d5db' }}';"
-                    title="Favorite">{{ '♥' if highlight.is_favorite else '♡' }}</button>
+                    hx-on::after-swap="this.style.pointerEvents='auto'; const icon = this.querySelector('[data-fav]'); const isFav = icon?.dataset.fav === 'true'; this.dataset.fav = isFav ? 'true' : 'false'; this.title = isFav ? 'Unfavorite' : 'Favorite';"
+                    title="{% if highlight.is_favorite %}Unfavorite{% else %}Favorite{% endif %}">
+                    {% if highlight.is_favorite %}
+                    <svg class="icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"
+                        data-fav="true">
+                        <path
+                            d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+                    </svg>
+                    {% else %}
+                    <svg class="icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" data-fav="false">
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                            d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
+                    </svg>
+                    {% endif %}
+                </button>
 
                 <!-- Edit button -->
-                <button hx-get="/highlights/{{ highlight.id }}/edit" hx-target="#highlight-view" hx-swap="innerHTML"
-                    style="background: none; border: none; padding: 4px; cursor: pointer; color: #6b7280; transition: color 0.15s;"
-                    onmouseover="this.style.color='#1f2937'" onmouseout="this.style.color='#6b7280'" title="Edit">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                        stroke-width="2" style="width: 18px; height: 18px;">
+                <button class="icon-btn" hx-get="/highlights/{{ highlight.id }}/edit" hx-target="#highlight-view"
+                    hx-swap="innerHTML" title="Edit">
+                    <svg class="icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M12 20h9" />
                         <path stroke-linecap="round" stroke-linejoin="round"
                             d="M16.5 3.5a2.121 2.121 0 113 3L7 19l-4 1 1-4 12.5-12.5z" />
@@ -98,13 +105,12 @@
                 </button>
 
                 <!-- Delete button -->
-                <button hx-delete="/highlights/{{ highlight.id }}"
+                <button class="icon-btn danger" hx-delete="/highlights/{{ highlight.id }}"
                     hx-confirm="Are you sure you want to delete this highlight?" hx-target="#highlight-view"
                     hx-swap="outerHTML"
-                    style="background: none; border: none; padding: 4px; cursor: pointer; color: #6b7280; transition: color 0.15s;"
-                    onmouseover="this.style.color='#b91c1c'" onmouseout="this.style.color='#6b7280'" title="Delete">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2"
-                        stroke="currentColor" style="width: 18px; height: 18px;">
+                    title="Delete">
+                    <svg class="icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round"
                             d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
                     </svg>

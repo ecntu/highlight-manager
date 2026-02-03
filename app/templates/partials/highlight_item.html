@@ -1,5 +1,4 @@
-<div style="background: white; border: 1px solid #e5e5e5; border-radius: 8px; padding: 16px; transition: border-color 0.15s; position: relative;"
-    onmouseover="this.style.borderColor='#d1d5db';" onmouseout="this.style.borderColor='#e5e5e5';">
+<div class="list-card">
 
     <!-- Highlight text - clickable to detail page -->
     <a href="/highlights/{{ highlight.id }}" style="text-decoration: none; color: inherit; display: block;">
@@ -18,8 +17,8 @@
     </a>
 
     <!-- Metadata row -->
-    <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px; font-size: 13px;">
-        <div style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
+    <div class="row-between" style="font-size: 13px;">
+        <div class="row" style="gap: 6px; flex-wrap: wrap;">
             <!-- Source -->
             {% if highlight.source %}
             <a href="/search?source_id={{ highlight.source.id }}"
@@ -35,11 +34,10 @@
 
             <!-- Collections -->
             {% if highlight.collections %}
-            {% if highlight.source %}<span style="color: #d1d5db;">·</span>{% endif %}
+            {% if highlight.source %}<span class="meta-divider">·</span>{% endif %}
             {% for collection in highlight.collections %}
             <a href="/search?collection_id={{ collection.id }}"
-                style="padding: 2px 8px; background: #fef3c7; color: #92400e; border-radius: 10px; font-size: 12px; text-decoration: none; font-weight: 500; transition: background 0.15s; line-height: 1.2;"
-                onmouseover="this.style.background='#fde68a';" onmouseout="this.style.background='#fef3c7';">
+                class="pill pill--amber">
                 {{ collection.name }}
             </a>
             {% endfor %}
@@ -47,11 +45,10 @@
 
             <!-- Tags -->
             {% if highlight.tags %}
-            {% if highlight.source or highlight.collections %}<span style="color: #d1d5db;">·</span>{% endif %}
+            {% if highlight.source or highlight.collections %}<span class="meta-divider">·</span>{% endif %}
             {% for tag in highlight.tags %}
             <a href="/search?tag={{ tag.name }}"
-                style="padding: 2px 8px; background: #eff6ff; color: #1e40af; border-radius: 10px; font-size: 12px; text-decoration: none; font-weight: 500; transition: background 0.15s; line-height: 1.2;"
-                onmouseover="this.style.background='#dbeafe';" onmouseout="this.style.background='#eff6ff';">
+                class="pill pill--blue">
                 {{ tag.name }}
             </a>
             {% endfor %}
@@ -59,19 +56,30 @@
         </div>
 
         <!-- Date & Favorite -->
-        <div style="display: flex; align-items: center; gap: 10px; white-space: nowrap;">
-            <span style="color: #9ca3af;">{{ highlight.created_at.strftime('%b %Y') }}</span>
-            <button id="fav-btn-{{ highlight.id }}" hx-put="/highlights/{{ highlight.id }}/favorite"
+        <div class="row" style="gap: 10px; white-space: nowrap;">
+            <span class="muted-2">{{ highlight.created_at.strftime('%b %Y') }}</span>
+            <button id="fav-btn-{{ highlight.id }}" class="icon-btn fav-toggle" data-fav="{{ 'true' if highlight.is_favorite else 'false' }}"
+                hx-put="/highlights/{{ highlight.id }}/favorite"
                 hx-target="#fav-icon-{{ highlight.id }}" hx-swap="innerHTML swap:0.1s"
                 title="{% if highlight.is_favorite %}Unfavorite{% else %}Favorite{% endif %}"
-                style="background: none; border: none; padding: 4px; cursor: pointer; color: {% if highlight.is_favorite %}#6b7280{% else %}#d1d5db{% endif %}; font-size: 18px; line-height: 1; display: inline-flex; align-items: center; transition: color 0.15s;"
-                onmouseover="this.style.color='{% if highlight.is_favorite %}#1f2937{% else %}#9ca3af{% endif %}';"
-                onmouseout="this.style.color='{% if highlight.is_favorite %}#6b7280{% else %}#d1d5db{% endif %}';"
                 hx-disabled-elt="this"
                 hx-on::before-request="document.getElementById('fav-icon-{{ highlight.id }}').innerHTML = '<span class=&quot;spinner&quot; style=&quot;color: #9ca3af; font-size: 14px;&quot;>●</span>';"
-                hx-on::after-swap="const btn = document.getElementById('fav-btn-{{ highlight.id }}'); const icon = document.getElementById('fav-icon-{{ highlight.id }}'); if(icon.textContent === '♥') { btn.style.color = '#6b7280'; btn.title = 'Unfavorite'; } else { btn.style.color = '#d1d5db'; btn.title = 'Favorite'; }">
-                <span id="fav-icon-{{ highlight.id }}" aria-hidden="true">{% if highlight.is_favorite %}♥{% else %}♡{%
-                    endif %}</span>
+                hx-on::after-swap="const icon = document.getElementById('fav-icon-{{ highlight.id }}')?.querySelector('[data-fav]'); const isFav = icon?.dataset.fav === 'true'; this.dataset.fav = isFav ? 'true' : 'false'; this.title = isFav ? 'Unfavorite' : 'Favorite';">
+                <span id="fav-icon-{{ highlight.id }}" aria-hidden="true">
+                    {% if highlight.is_favorite %}
+                    <svg class="icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"
+                        data-fav="true">
+                        <path
+                            d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+                    </svg>
+                    {% else %}
+                    <svg class="icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" data-fav="false">
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                            d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
+                    </svg>
+                    {% endif %}
+                </span>
             </button>
         </div>
     </div>
