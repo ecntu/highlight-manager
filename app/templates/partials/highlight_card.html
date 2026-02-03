@@ -1,35 +1,6 @@
-<div id="highlight-view" class="card" style="padding: 32px; position: relative;">
-    <!-- Action Buttons - Top Right -->
-    <div style="position: absolute; top: 24px; right: 24px; display: flex; gap: 4px; align-items: center;">
-        <button hx-put="/highlights/{{ highlight.id }}/favorite" hx-target="#highlight-view" hx-swap="outerHTML"
-            title="{% if highlight.is_favorite %}Unfavorite{% else %}Favorite{% endif %}" class="action-btn favorite"
-            style="background: none; border: none; padding: 8px; cursor: pointer; color: {% if highlight.is_favorite %}#f59e0b{% else %}#d1d5db{% endif %}; font-size: 20px; transition: all 0.2s; line-height: 1; border-radius: 6px;">
-            {% if highlight.is_favorite %}★{% else %}☆{% endif %}
-        </button>
-
-        <button hx-get="/highlights/{{ highlight.id }}/edit" hx-target="#highlight-container" hx-swap="innerHTML"
-            title="Edit" class="action-btn"
-            style="background: none; border: none; padding: 8px; cursor: pointer; color: #9ca3af; transition: all 0.2s; border-radius: 6px;">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
-                stroke="currentColor" style="width: 18px; height: 18px;">
-                <path stroke-linecap="round" stroke-linejoin="round"
-                    d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
-            </svg>
-        </button>
-
-        <button hx-delete="/highlights/{{ highlight.id }}" hx-confirm="Archive this highlight?"
-            hx-target="#highlight-view" hx-swap="outerHTML" title="Archive" class="action-btn"
-            style="background: none; border: none; padding: 8px; cursor: pointer; color: #9ca3af; transition: all 0.2s; border-radius: 6px;">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
-                stroke="currentColor" style="width: 18px; height: 18px;">
-                <path stroke-linecap="round" stroke-linejoin="round"
-                    d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
-            </svg>
-        </button>
-    </div>
-
+<div id="highlight-view" class="card" style="padding: 20px 24px; position: relative;">
     <!-- Highlight Text -->
-    <div style="padding-right: 120px; margin-bottom: 16px;">
+    <div style="margin-bottom: 16px;">
         <p style="font-size: 18px; line-height: 1.65; color: #111827; margin: 0;">{{ highlight.text }}</p>
     </div>
 
@@ -43,8 +14,8 @@
     {% endif %}
 
     <!-- Source, Date & Collections -->
-    <div
-        style="display: flex; gap: 10px; align-items: center; font-size: 13px; color: #9ca3af; flex-wrap: wrap; margin-bottom: 12px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px; font-size: 13px; color: #9ca3af; flex-wrap: wrap; margin-bottom: 6px;">
+        <div style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
         {% if highlight.source %}
         {% if highlight.source.type.value == 'web' %}
         {% if highlight.url %}
@@ -58,24 +29,22 @@
             style="color: #6b7280; text-decoration: none; font-weight: 500; transition: color 0.15s;">{{
             highlight.source.title }}</a>
         {% endif %}
-        <span style="color: #d1d5db;">·</span>
         {% endif %}
-        <span>{{ highlight.created_at.strftime('%b %Y') }}</span>
         {% if highlight.status.value == 'archived' %}
         <span
             style="padding: 2px 6px; background: #fee2e2; color: #dc2626; border-radius: 6px; font-size: 10px; font-weight: 600; text-transform: uppercase;">Archived</span>
         {% endif %}
         {% if highlight.collections %}
-        <span style="color: #d1d5db;">·</span>
+        {% if highlight.source %}<span style="color: #d1d5db;">·</span>{% endif %}
         {% for collection in highlight.collections %}
         <a href="/collections/{{ collection.id }}"
-            style="padding: 3px 9px; background: #fef3c7; color: #92400e; border-radius: 10px; font-size: 12px; text-decoration: none; font-weight: 500; transition: background 0.15s;">
+            style="padding: 2px 8px; background: #fef3c7; color: #92400e; border-radius: 10px; font-size: 12px; text-decoration: none; font-weight: 500; transition: background 0.15s; line-height: 1.2;">
             {{ collection.name }}
         </a>
         {% endfor %}
         {% endif %}
         <button onclick="showAddToCollection()" title="Add to collection" class="pill-btn"
-            style="background: white; border: 1px solid #e5e5e5; padding: 3px 8px; cursor: pointer; color: #6b7280; font-size: 12px; border-radius: 10px; transition: all 0.15s; display: flex; align-items: center; gap: 3px;">
+            style="background: white; border: 1px solid #e5e5e5; padding: 2px 8px; cursor: pointer; color: #6b7280; font-size: 12px; border-radius: 10px; transition: all 0.15s; display: flex; align-items: center; gap: 3px; line-height: 1.2;">
             <span style="font-size: 13px; line-height: 1;">+</span>
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2"
                 stroke="currentColor" style="width: 12px; height: 12px;">
@@ -84,18 +53,59 @@
             </svg>
         </button>
         {% if highlight.tags or true %}
-        <span style="color: #d1d5db;">·</span>
         {% if highlight.tags %}
         {% for tag in highlight.tags %}
         <span
-            style="padding: 3px 9px; background: #eff6ff; color: #1e40af; border-radius: 10px; font-size: 12px; font-weight: 500;">
+            style="padding: 2px 8px; background: #eff6ff; color: #1e40af; border-radius: 10px; font-size: 12px; font-weight: 500; line-height: 1.2;">
             {{ tag.name }}
         </span>
         {% endfor %}
         {% endif %}
         <button hx-get="/highlights/{{ highlight.id }}/add-tag" hx-target="#tag-modal" hx-swap="innerHTML"
             onclick="document.getElementById('tag-modal').style.display='flex'" title="Add tag" class="pill-btn"
-            style="background: white; border: 1px solid #e5e5e5; padding: 3px 8px; cursor: pointer; color: #6b7280; font-size: 12px; border-radius: 10px; transition: all 0.15s; font-weight: 500; display: flex; align-items: center; gap: 2px;"><span>+</span><span>#</span></button>
+            style="background: white; border: 1px solid #e5e5e5; padding: 2px 8px; cursor: pointer; color: #6b7280; font-size: 12px; border-radius: 10px; transition: all 0.15s; font-weight: 500; display: flex; align-items: center; gap: 2px; line-height: 1.2;"><span>+</span><span>#</span></button>
         {% endif %}
+        </div>
+        
+        <!-- Date and action buttons on the right -->
+        <div style="display: flex; align-items: center; gap: 10px; white-space: nowrap;">
+            <span style="color: #9ca3af;">{{ highlight.created_at.strftime('%b %Y') }}</span>
+            
+            <!-- Action buttons -->
+            <div style="display: flex; gap: 6px;">
+                <!-- Favorite button -->
+                <button hx-put="/highlights/{{ highlight.id }}/favorite" hx-target="this" hx-swap="innerHTML"
+                    hx-disabled-elt="this"
+                    hx-on::before-request="this.style.pointerEvents='none'; this.innerHTML = '<span class=\'spinner\' style=\'display: inline-block; animation: spin 1s linear infinite; color: #9ca3af;\'>●</span>'"
+                    hx-on::after-swap="this.style.pointerEvents='auto'; this.style.color = this.innerHTML.trim() === '♥' ? '#6b7280' : '#d1d5db'"
+                    style="background: none; border: none; padding: 4px; cursor: pointer; font-size: 18px; transition: color 0.15s; color: {{ '#6b7280' if highlight.is_favorite else '#d1d5db' }};"
+                    onmouseover="this.style.color='{{ '#1f2937' if highlight.is_favorite else '#9ca3af' }}';"
+                    onmouseout="this.style.color='{{ '#6b7280' if highlight.is_favorite else '#d1d5db' }}';"
+                    title="Favorite">{{ '♥' if highlight.is_favorite else '♡' }}</button>
+
+                <!-- Edit button -->
+                <button hx-get="/highlights/{{ highlight.id }}/edit" hx-target="#highlight-view" hx-swap="innerHTML"
+                    style="background: none; border: none; padding: 4px; cursor: pointer; color: #6b7280; transition: color 0.15s;"
+                    onmouseover="this.style.color='#1f2937'" onmouseout="this.style.color='#6b7280'" title="Edit">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        style="width: 18px; height: 18px;">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 20h9" />
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 3.5a2.121 2.121 0 113 3L7 19l-4 1 1-4 12.5-12.5z" />
+                    </svg>
+                </button>
+
+                <!-- Delete button -->
+                <button hx-delete="/highlights/{{ highlight.id }}" hx-confirm="Are you sure you want to delete this highlight?"
+                    hx-target="#highlight-view" hx-swap="outerHTML"
+                    style="background: none; border: none; padding: 4px; cursor: pointer; color: #6b7280; transition: color 0.15s;"
+                    onmouseover="this.style.color='#b91c1c'" onmouseout="this.style.color='#6b7280'" title="Delete">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2"
+                        stroke="currentColor" style="width: 18px; height: 18px;">
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                            d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                    </svg>
+                </button>
+            </div>
+        </div>
     </div>
 </div>

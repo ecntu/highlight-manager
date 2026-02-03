@@ -32,7 +32,9 @@
         <div style="display: flex; gap: 10px;">
             <input type="text" name="name" placeholder="Device name (e.g., iPhone, MacBook)" required
                 style="flex: 1; font-size: 14px;">
-            <button type="submit" style="width: auto;">
+            <button type="submit" style="width: auto; padding: 10px 16px; border-radius: 8px; background: white; color: #6b7280; border: 1px solid #e5e5e5; font-weight: 600; transition: all 0.15s;"
+                onmouseover="this.style.borderColor='#d1d5db'; this.style.background='#f9fafb';"
+                onmouseout="this.style.borderColor='#e5e5e5'; this.style.background='white';">
                 Create Device Key
                 <span class="htmx-indicator">...</span>
             </button>

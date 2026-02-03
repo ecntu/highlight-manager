@@ -1,5 +1,5 @@
 from fastapi import FastAPI, Depends, HTTPException, status, Form, Request, Response
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, PlainTextResponse
 from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
 from sqlalchemy.orm import Session, joinedload
@@ -7,6 +7,7 @@ from sqlalchemy import or_
 from datetime import datetime
 from urllib.parse import urlparse
 import secrets
+import re
 from typing import Optional
 from app.database import get_db
 from app.models import (
@@ -26,6 +27,21 @@ from app.config import settings
 app = FastAPI(title="Personal Highlight Manager")
 app.add_middleware(SessionMiddleware, secret_key=settings.secret_key)
 templates = Jinja2Templates(directory="app/templates")
+
+
+def highlight_matches(text: str, search_term: str) -> str:
+    """Bold matching search terms in text."""
+    if not search_term or not text:
+        return text
+    # Escape special regex characters but preserve the search term
+    escaped_term = re.escape(search_term)
+    # Case-insensitive replacement
+    pattern = re.compile(f'({escaped_term})', re.IGNORECASE)
+    return pattern.sub(r'<strong>\1</strong>', text)
+
+
+# Add custom filter to Jinja2
+templates.env.filters['highlight_matches'] = highlight_matches
 
 
 def get_session_user(request: Request, db: Session = Depends(get_db)) -> Optional[User]:
@@ -433,6 +449,12 @@ def get_highlight(
     if not highlight:
         raise HTTPException(status_code=404, detail="Highlight not found")
 
+    if is_htmx(request):
+        return templates.TemplateResponse(
+            "partials/highlight_card.html",
+            {"request": request, "highlight": highlight, "current_user": user},
+        )
+
     return templates.TemplateResponse(
         "detail.html",
         {"request": request, "highlight": highlight, "current_user": user},
@@ -555,12 +577,10 @@ def update_highlight(
     )
 
     if is_htmx(request):
-        # Return just the view card wrapped in container
-        card_html = templates.TemplateResponse(
+        return templates.TemplateResponse(
             "partials/highlight_card.html",
             {"request": request, "highlight": highlight, "current_user": user},
-        ).body.decode()
-        return HTMLResponse(f'<div id="highlight-container">{card_html}</div>')
+        )
     return RedirectResponse(url=f"/highlights/{highlight_id}", status_code=303)
 
 
@@ -678,11 +698,9 @@ def toggle_favorite(
     db.refresh(highlight)
 
     if is_htmx(request):
-        # Return just the highlight card partial
-        return templates.TemplateResponse(
-            "partials/highlight_card.html",
-            {"request": request, "highlight": highlight, "current_user": user},
-        )
+        # Return just the icon (heart variant)
+        icon = "♥" if highlight.is_favorite else "♡"
+        return PlainTextResponse(icon)
     return RedirectResponse(url=f"/highlights/{highlight_id}", status_code=303)
 
 
@@ -720,11 +738,10 @@ def delete_highlight(
         cleanup_orphaned_sources(user.id, db)
 
     if is_htmx(request):
-        # Return just the highlight card partial
-        return templates.TemplateResponse(
-            "partials/highlight_card.html",
-            {"request": request, "highlight": highlight, "current_user": user},
-        )
+        # For detail page, redirect to highlights list (avoids nested templates)
+        response = Response(status_code=200)
+        response.headers["HX-Redirect"] = "/highlights"
+        return response
     return RedirectResponse(url="/highlights", status_code=303)
 
 
@@ -758,12 +775,8 @@ def source_detail(
     if not source:
         raise HTTPException(status_code=404, detail="Source not found")
 
-    highlights = (
-        db.query(Highlight)
-        .filter(Highlight.source_id == source_id, Highlight.user_id == user.id)
-        .order_by(Highlight.created_at.desc())
-        .all()
-    )
+    # Redirect to search with source filter
+    return RedirectResponse(url=f"/search?source_id={source_id}", status_code=303)
 
     return templates.TemplateResponse(
         "source_detail.html",
@@ -805,16 +818,20 @@ def search_quick(
     if not results:
         return ""
 
-    # Return dropdown HTML
+    # Return dropdown HTML with bold matches
     html = ""
     for h in results:
         preview = h.text[:100] + "..." if len(h.text) > 100 else h.text
+        # Apply highlighting
+        highlighted_preview = highlight_matches(preview, q)
+        source_text = h.source.domain if h.source and h.source.type.value == "web" else (h.source.title if h.source else "No source")
+        
         html += f"""
         <a href="/highlights/{h.id}" class="search-dropdown-item" style="text-decoration: none; color: inherit; display: block;">
             <div style="font-size: 13px; color: #666; margin-bottom: 4px;">
-                {h.source.domain if h.source and h.source.type.value == "web" else (h.source.title if h.source else "No source")}
+                {source_text}
             </div>
-            <div style="font-size: 14px; color: #1a1a1a;">{preview}</div>
+            <div style="font-size: 14px; color: #1a1a1a;">{highlighted_preview}</div>
         </a>
         """
 
@@ -832,14 +849,22 @@ def search_page(
     request: Request,
     q: Optional[str] = None,
     source_type: Optional[str] = None,
+    source_id: Optional[str] = None,
+    collection_id: Optional[str] = None,
+    tag: Optional[str] = None,
     status: Optional[str] = None,
     favorite: Optional[str] = None,
+    sort: Optional[str] = None,
     user: User = Depends(require_user),
     db: Session = Depends(get_db),
 ):
     results = []
-    if q or source_type or status or favorite:
-        query = db.query(Highlight).filter(Highlight.user_id == user.id)
+    if q or source_type or source_id or collection_id or tag or status or favorite:
+        query = db.query(Highlight).options(
+            joinedload(Highlight.source),
+            joinedload(Highlight.tags),
+            joinedload(Highlight.collections),
+        ).filter(Highlight.user_id == user.id)
 
         if q:
             search_term = f"%{q}%"
@@ -852,13 +877,35 @@ def search_page(
         if source_type:
             query = query.join(Source).filter(Source.type == source_type)
 
+        if source_id:
+            query = query.filter(Highlight.source_id == source_id)
+
+        if collection_id:
+            query = query.filter(Highlight.collections.any(Collection.id == collection_id))
+
+        if tag:
+            query = query.filter(Highlight.tags.any(Tag.name == tag))
+
         if status:
             query = query.filter(Highlight.status == HighlightStatus(status))
 
         if favorite == "true":
             query = query.filter(Highlight.is_favorite == True)
 
-        results = query.order_by(Highlight.created_at.desc()).all()
+        # Apply sorting
+        if sort == "recent-asc":
+            query = query.order_by(Highlight.created_at.asc())
+        elif sort == "relevance" and q:
+            # For relevance, prioritize exact matches in text over note
+            # This is a simple implementation; could be enhanced with full-text search
+            query = query.order_by(
+                Highlight.text.ilike(search_term).desc(),
+                Highlight.created_at.desc()
+            )
+        else:  # Default to recent-desc
+            query = query.order_by(Highlight.created_at.desc())
+
+        results = query.all()
 
     if is_htmx(request):
         return templates.TemplateResponse(
@@ -868,8 +915,12 @@ def search_page(
                 "results": results,
                 "query": q,
                 "source_type": source_type,
+                "source_id": source_id,
+                "collection_id": collection_id,
+                "tag": tag,
                 "status": status,
                 "favorite": favorite,
+                "sort": sort,
             },
         )
 
@@ -880,8 +931,12 @@ def search_page(
             "results": results,
             "query": q,
             "source_type": source_type,
+            "source_id": source_id,
+            "collection_id": collection_id,
+            "tag": tag,
             "status": status,
             "favorite": favorite,
+            "sort": sort,
             "current_user": user,
         },
     )
@@ -944,10 +999,8 @@ def get_collection(
     if not collection:
         raise HTTPException(status_code=404, detail="Collection not found")
 
-    return templates.TemplateResponse(
-        "collection_detail.html",
-        {"request": request, "collection": collection, "current_user": user},
-    )
+    # Redirect to search with collection filter
+    return RedirectResponse(url=f"/search?collection_id={collection_id}", status_code=303)
 
 
 @app.patch("/collections/{collection_id}")

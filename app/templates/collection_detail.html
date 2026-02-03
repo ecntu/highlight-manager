@@ -34,10 +34,15 @@
             <textarea name="description" rows="3">{{ collection.description or "" }}</textarea>
         </div>
         <div style="display: flex; gap: 10px;">
-            <button type="submit">Save Changes</button>
+            <button type="submit"
+                style="padding: 10px 18px; border-radius: 8px; background: white; color: #6b7280; border: 1px solid #e5e5e5; font-weight: 600; letter-spacing: 0.01em; transition: all 0.15s;"
+                onmouseover="this.style.borderColor='#d1d5db'; this.style.background='#f9fafb';"
+                onmouseout="this.style.borderColor='#e5e5e5'; this.style.background='white';">Save Changes</button>
             <button type="button"
                 onclick="this.closest('form').style.display='none'; this.closest('.card').querySelector('button').style.display='inline-block';"
-                style="padding: 10px 20px; background: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 14px;">
+                style="padding: 9px 16px; border-radius: 8px; background: white; color: #6b7280; border: 1px solid #e5e5e5; font-weight: 600; transition: all 0.15s;"
+                onmouseover="this.style.borderColor='#d1d5db'; this.style.background='#f9fafb';"
+                onmouseout="this.style.borderColor='#e5e5e5'; this.style.background='white';">
                 Cancel
             </button>
         </div>

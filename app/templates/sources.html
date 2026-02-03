@@ -56,7 +56,7 @@
                         {% set favorite_count = source.highlights|selectattr('is_favorite')|list|length %}
                         {% if favorite_count > 0 %}
                         <span style="color: #d1d5db;">·</span>
-                        <span style="color: #f59e0b;">★ {{ favorite_count }}</span>
+                        <span style="color: #6b7280;">♥ {{ favorite_count }}</span>
                         {% endif %}
                     </div>
                 </div>
