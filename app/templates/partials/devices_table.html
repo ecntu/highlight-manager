@@ -10,11 +10,15 @@
                 <span class="muted-2">Last used {% if device.last_used_at %}{{ device.last_used_at.strftime('%b %d, %Y') }}{% else %}never{% endif %}</span>
             </div>
         </div>
+        {% if device.name != 'Web' %}
         <button hx-delete="/devices/{{ device.id }}" hx-target="#device-{{ device.id }}" hx-swap="outerHTML swap:200ms"
             hx-confirm="Revoke this device key?"
             class="btn btn--ghost btn--sm">
             Revoke
         </button>
+        {% else %}
+        <span class="pill" style="background: #f3f4f6; color: #6b7280; border: 1px solid #e5e7eb;">Default</span>
+        {% endif %}
     </div>
     {% endfor %}
 </div>

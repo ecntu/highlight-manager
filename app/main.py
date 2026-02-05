@@ -69,6 +69,49 @@ def normalize_url(url: str) -> str:
     return url
 
 
+WEB_DEVICE_NAME = "Web"
+WEB_DEVICE_PREFIX = "web"
+
+
+def get_or_create_web_device(user_id: str, db: Session, backfill: bool = False) -> Device:
+    device = (
+        db.query(Device)
+        .filter(
+            Device.user_id == user_id,
+            Device.revoked_at == None,
+            Device.name == WEB_DEVICE_NAME,
+        )
+        .first()
+    )
+    changed = False
+    if not device:
+        api_key = f"phm_web_{secrets.token_urlsafe(24)}"
+        device = Device(
+            user_id=user_id,
+            name=WEB_DEVICE_NAME,
+            api_key_hash=hash_password(api_key),
+            prefix=WEB_DEVICE_PREFIX,
+        )
+        db.add(device)
+        db.flush()
+        changed = True
+
+    if backfill:
+        updated = (
+            db.query(Highlight)
+            .filter(Highlight.user_id == user_id, Highlight.device_id == None)
+            .update({Highlight.device_id: device.id})
+        )
+        if updated:
+            changed = True
+
+    if changed:
+        db.commit()
+        db.refresh(device)
+
+    return device
+
+
 def cleanup_orphaned_sources(user_id: str, db: Session):
     """Delete sources that have no active highlights."""
     orphaned = (
@@ -216,6 +259,7 @@ def register(
     user = User(username=username, password_hash=hash_password(password))
     db.add(user)
     db.commit()
+    get_or_create_web_device(user.id, db)
     request.session["user_id"] = str(user.id)
     return RedirectResponse(url="/highlights", status_code=303)
 
@@ -246,6 +290,7 @@ def login(
 def list_highlights(
     request: Request, user: User = Depends(require_user), db: Session = Depends(get_db)
 ):
+    get_or_create_web_device(user.id, db, backfill=True)
     highlights = (
         db.query(Highlight)
         .filter(Highlight.user_id == user.id)
@@ -278,6 +323,7 @@ def create_highlight(
     tags = tags.strip() if tags else None
     note = note.strip() if note else None
 
+    web_device = get_or_create_web_device(user.id, db)
     highlight = create_highlight_with_metadata(
         user_id=user.id,
         text=text,
@@ -286,7 +332,7 @@ def create_highlight(
         source_url=source_url or None,
         source_title=source_title or None,
         source_author=source_author or None,
-        device_id=None,
+        device_id=web_device.id,
         db=db,
     )
 
@@ -308,6 +354,7 @@ def logout(request: Request):
 def settings_page(
     request: Request, user: User = Depends(require_user), db: Session = Depends(get_db)
 ):
+    get_or_create_web_device(user.id, db, backfill=True)
     devices = (
         db.query(Device)
         .filter(Device.user_id == user.id, Device.revoked_at == None)
@@ -371,6 +418,8 @@ def delete_device(
         .filter(Device.id == device_id, Device.user_id == user.id)
         .first()
     )
+    if device and device.name == WEB_DEVICE_NAME:
+        raise HTTPException(status_code=400, detail="Web device cannot be revoked")
     if device:
         device.revoked_at = datetime.utcnow()
         db.commit()
@@ -443,6 +492,7 @@ def get_highlight(
             joinedload(Highlight.source),
             joinedload(Highlight.tags),
             joinedload(Highlight.collections),
+            joinedload(Highlight.device),
         )
         .filter(Highlight.id == highlight_id, Highlight.user_id == user.id)
         .first()
@@ -453,12 +503,20 @@ def get_highlight(
     if is_htmx(request):
         return templates.TemplateResponse(
             "partials/highlight_card.html",
-            {"request": request, "highlight": highlight, "current_user": user},
+            {
+                "request": request,
+                "highlight": highlight,
+                "current_user": user,
+            },
         )
 
     return templates.TemplateResponse(
         "detail.html",
-        {"request": request, "highlight": highlight, "current_user": user},
+        {
+            "request": request,
+            "highlight": highlight,
+            "current_user": user,
+        },
     )
 
 
@@ -572,6 +630,7 @@ def update_highlight(
             joinedload(Highlight.source),
             joinedload(Highlight.tags),
             joinedload(Highlight.collections),
+            joinedload(Highlight.device),
         )
         .filter(Highlight.id == highlight_id)
         .first()
@@ -580,7 +639,11 @@ def update_highlight(
     if is_htmx(request):
         return templates.TemplateResponse(
             "partials/highlight_card.html",
-            {"request": request, "highlight": highlight, "current_user": user},
+            {
+                "request": request,
+                "highlight": highlight,
+                "current_user": user,
+            },
         )
     return RedirectResponse(url=f"/highlights/{highlight_id}", status_code=303)
 
@@ -598,6 +661,7 @@ def get_highlight_edit(
             joinedload(Highlight.source),
             joinedload(Highlight.tags),
             joinedload(Highlight.collections),
+            joinedload(Highlight.device),
         )
         .filter(Highlight.id == highlight_id, Highlight.user_id == user.id)
         .first()
@@ -669,7 +733,12 @@ def add_tag_to_highlight(
     if is_htmx(request):
         return templates.TemplateResponse(
             "partials/highlight_card.html",
-            {"request": request, "highlight": highlight, "current_user": user},
+            {
+                "request": request,
+                "highlight": highlight,
+                "current_user": user,
+                "show_metadata": True,
+            },
         )
     return RedirectResponse(url=f"/highlights/{highlight_id}", status_code=303)
 
@@ -862,14 +931,28 @@ def search_page(
     source_id: Optional[str] = None,
     collection_id: Optional[str] = None,
     tag: Optional[str] = None,
+    device_id: Optional[str] = None,
     status: Optional[str] = None,
     favorite: Optional[str] = None,
     sort: Optional[str] = None,
     user: User = Depends(require_user),
     db: Session = Depends(get_db),
 ):
+    get_or_create_web_device(user.id, db, backfill=True)
+    status_provided = status is not None
+    status_filter = status if status not in (None, "", "all") else None
+    has_search = bool(
+        q
+        or source_type
+        or source_id
+        or collection_id
+        or tag
+        or device_id
+        or favorite
+        or status_provided
+    )
     results = []
-    if q or source_type or source_id or collection_id or tag or status or favorite:
+    if has_search:
         query = (
             db.query(Highlight)
             .options(
@@ -902,8 +985,14 @@ def search_page(
         if tag:
             query = query.filter(Highlight.tags.any(Tag.name == tag))
 
-        if status:
-            query = query.filter(Highlight.status == HighlightStatus(status))
+        if device_id:
+            query = query.filter(Highlight.device_id == device_id)
+
+        if status_provided:
+            if status_filter:
+                query = query.filter(Highlight.status == HighlightStatus(status_filter))
+        else:
+            query = query.filter(Highlight.status == HighlightStatus("active"))
 
         if favorite == "true":
             query = query.filter(Highlight.is_favorite == True)
@@ -933,12 +1022,21 @@ def search_page(
                 "source_id": source_id,
                 "collection_id": collection_id,
                 "tag": tag,
+                "device_id": device_id,
                 "status": status,
                 "favorite": favorite,
                 "sort": sort,
             },
         )
 
+    devices = (
+        db.query(Device)
+        .filter(Device.user_id == user.id, Device.revoked_at == None)
+        .order_by(Device.created_at.desc())
+        .all()
+    )
+
+    status_ui = status if status is not None else "active"
     return templates.TemplateResponse(
         "search.html",
         {
@@ -949,9 +1047,12 @@ def search_page(
             "source_id": source_id,
             "collection_id": collection_id,
             "tag": tag,
+            "device_id": device_id,
             "status": status,
+            "status_ui": status_ui,
             "favorite": favorite,
             "sort": sort,
+            "devices": devices,
             "current_user": user,
         },
     )

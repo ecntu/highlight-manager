@@ -66,6 +66,8 @@
         </div>
 
         <div class="row" style="gap: 10px; white-space: nowrap;">
+            <span class="muted-2">{{ highlight.device.name }}</span>
+            <span class="muted-2">·</span>
             <span class="muted-2">{{ highlight.created_at.strftime('%b %Y') }}</span>
             <div class="row" style="gap: 6px;">
                 <button class="icon-btn fav-toggle" data-fav="{{ 'true' if highlight.is_favorite else 'false' }}"
@@ -201,6 +203,8 @@
             </div>
 
             <div class="row" style="gap: 10px; white-space: nowrap;">
+                <span class="muted-2">{{ highlight.device.name }}</span>
+                <span class="muted-2">·</span>
                 <span class="muted-2">{{ highlight.created_at.strftime('%b %Y') }}</span>
                 <div class="row" style="gap: 6px;">
                     <button class="icon-btn" hx-get="/highlights/{{ highlight.id }}/edit" hx-target="#highlight-view"

@@ -415,6 +415,36 @@
             padding: 10px 14px;
         }
 
+        .search-form {
+            display: grid;
+            gap: 10px;
+        }
+
+        .search-input-wrap {
+            position: relative;
+        }
+
+        .search-input-icon {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 18px;
+            height: 18px;
+            color: var(--muted-2);
+        }
+
+        .search-input {
+            padding-left: 40px;
+        }
+
+        .search-filters {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            align-items: center;
+        }
+
         .icon-btn {
             background: none;
             border: none;
@@ -676,6 +706,12 @@
             .select-compact {
                 font-size: 12px;
                 width: 100%;
+            }
+
+            .search-filters {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 8px;
             }
 
             .highlight-details summary {
