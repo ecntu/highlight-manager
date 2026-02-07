@@ -4,7 +4,8 @@ from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import or_, func
-from datetime import datetime
+from datetime import datetime, timedelta
+from calendar import monthrange
 from urllib.parse import urlparse
 import secrets
 import re
@@ -20,6 +21,7 @@ from app.models import (
     HighlightStatus,
     Collection,
     CollectionItem,
+    Reminder,
 )
 from app.auth import hash_password, verify_password
 from app.config import settings
@@ -86,6 +88,7 @@ def build_import_fingerprint(source_id: Optional[str], original_text: str) -> Op
 WEB_DEVICE_NAME = "Web"
 WEB_DEVICE_PREFIX = "web"
 SOURCE_HIGHLIGHTS_PREVIEW_LIMIT = 25
+HOME_DUE_REMINDERS_LIMIT = 10
 
 
 def get_or_create_web_device(user_id: str, db: Session, backfill: bool = False) -> Device:
@@ -142,6 +145,33 @@ def cleanup_orphaned_sources(user_id: str, db: Session):
         db.delete(source)
     if orphaned:
         db.commit()
+
+
+def add_months(dt: datetime, months: int) -> datetime:
+    month_index = dt.month - 1 + months
+    year = dt.year + month_index // 12
+    month = month_index % 12 + 1
+    day = min(dt.day, monthrange(year, month)[1])
+    return dt.replace(year=year, month=month, day=day)
+
+
+def add_years(dt: datetime, years: int) -> datetime:
+    year = dt.year + years
+    day = min(dt.day, monthrange(year, dt.month)[1])
+    return dt.replace(year=year, day=day)
+
+
+def build_remind_at_from_preset(preset: str, now: datetime) -> datetime:
+    start_today = datetime(now.year, now.month, now.day)
+    if preset == "tomorrow":
+        return start_today + timedelta(days=1)
+    if preset == "next_week":
+        return start_today + timedelta(days=7)
+    if preset == "next_month":
+        return add_months(start_today, 1)
+    if preset == "next_year":
+        return add_years(start_today, 1)
+    raise HTTPException(status_code=400, detail="Invalid reminder preset")
 
 
 def get_or_create_source(
@@ -343,6 +373,7 @@ def list_highlights(
     request: Request, user: User = Depends(require_user), db: Session = Depends(get_db)
 ):
     get_or_create_web_device(user.id, db, backfill=True)
+    now = datetime.utcnow()
     highlights = (
         db.query(Highlight)
         .filter(Highlight.user_id == user.id)
@@ -350,9 +381,22 @@ def list_highlights(
         .limit(20)
         .all()
     )
+    due_reminders = (
+        db.query(Reminder)
+        .options(joinedload(Reminder.highlight).joinedload(Highlight.source))
+        .filter(Reminder.user_id == user.id, Reminder.remind_at <= now)
+        .order_by(Reminder.remind_at.asc())
+        .limit(HOME_DUE_REMINDERS_LIMIT)
+        .all()
+    )
     return templates.TemplateResponse(
         "home.html",
-        {"request": request, "highlights": highlights, "current_user": user},
+        {
+            "request": request,
+            "highlights": highlights,
+            "due_reminders": due_reminders,
+            "current_user": user,
+        },
     )
 
 
@@ -609,6 +653,7 @@ def get_highlight(
             joinedload(Highlight.tags),
             joinedload(Highlight.collections),
             joinedload(Highlight.device),
+            joinedload(Highlight.reminders),
         )
         .filter(Highlight.id == highlight_id, Highlight.user_id == user.id)
         .first()
@@ -634,6 +679,117 @@ def get_highlight(
             "current_user": user,
         },
     )
+
+
+@app.post("/highlights/{highlight_id}/reminders")
+def create_or_update_reminder(
+    highlight_id: str,
+    request: Request,
+    preset: Optional[str] = Form(None),
+    remind_on: Optional[str] = Form(None),
+    keep_open: Optional[str] = Form(None),
+    user: User = Depends(require_user),
+    db: Session = Depends(get_db),
+):
+    highlight = (
+        db.query(Highlight)
+        .options(
+            joinedload(Highlight.source),
+            joinedload(Highlight.tags),
+            joinedload(Highlight.collections),
+            joinedload(Highlight.device),
+            joinedload(Highlight.reminders),
+        )
+        .filter(Highlight.id == highlight_id, Highlight.user_id == user.id)
+        .first()
+    )
+    if not highlight:
+        raise HTTPException(status_code=404, detail="Highlight not found")
+
+    now = datetime.utcnow()
+    if remind_on:
+        try:
+            custom_date = datetime.strptime(remind_on, "%Y-%m-%d")
+            resolved_remind_at = datetime(
+                custom_date.year, custom_date.month, custom_date.day
+            )
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid custom reminder date")
+    else:
+        if not preset:
+            raise HTTPException(status_code=400, detail="Missing reminder preset")
+        resolved_remind_at = build_remind_at_from_preset(preset, now)
+
+    reminder = Reminder(
+        user_id=user.id,
+        highlight_id=highlight_id,
+        remind_at=resolved_remind_at,
+    )
+    db.add(reminder)
+    db.commit()
+    db.refresh(highlight)
+
+    if is_htmx(request):
+        return templates.TemplateResponse(
+            "partials/reminders_panel.html",
+            {
+                "request": request,
+                "highlight": highlight,
+                "keep_open": bool(keep_open),
+                "current_user": user,
+            },
+        )
+    return RedirectResponse(url=f"/highlights/{highlight_id}", status_code=303)
+
+
+@app.delete("/highlights/{highlight_id}/reminders/{reminder_id}")
+def dismiss_highlight_reminder(
+    highlight_id: str,
+    reminder_id: str,
+    request: Request,
+    user: User = Depends(require_user),
+    db: Session = Depends(get_db),
+):
+    highlight = (
+        db.query(Highlight)
+        .options(
+            joinedload(Highlight.source),
+            joinedload(Highlight.tags),
+            joinedload(Highlight.collections),
+            joinedload(Highlight.device),
+            joinedload(Highlight.reminders),
+        )
+        .filter(Highlight.id == highlight_id, Highlight.user_id == user.id)
+        .first()
+    )
+    if not highlight:
+        raise HTTPException(status_code=404, detail="Highlight not found")
+
+    reminder = (
+        db.query(Reminder)
+        .filter(
+            Reminder.id == reminder_id,
+            Reminder.user_id == user.id,
+            Reminder.highlight_id == highlight_id,
+        )
+        .first()
+    )
+    if reminder:
+        db.delete(reminder)
+        db.commit()
+    db.refresh(highlight)
+
+    if is_htmx(request):
+        return templates.TemplateResponse(
+            "partials/reminders_panel.html",
+            {
+                "request": request,
+                "highlight": highlight,
+                "keep_open": True,
+                "current_user": user,
+            },
+        )
+    return RedirectResponse(url=f"/highlights/{highlight_id}", status_code=303)
 
 
 @app.patch("/highlights/{highlight_id}")
@@ -901,6 +1057,10 @@ def delete_highlight(
         if highlight.status == HighlightStatus.ACTIVE
         else HighlightStatus.ACTIVE
     )
+    if highlight.status == HighlightStatus.ARCHIVED:
+        db.query(Reminder).filter(
+            Reminder.user_id == user.id, Reminder.highlight_id == highlight.id
+        ).delete()
     db.commit()
     db.refresh(highlight)
 
@@ -1203,6 +1363,52 @@ def search_page(
             "current_user": user,
         },
     )
+
+
+@app.get("/reminders", response_class=HTMLResponse)
+def reminders_page(
+    request: Request, user: User = Depends(require_user), db: Session = Depends(get_db)
+):
+    now = datetime.utcnow()
+    reminders = (
+        db.query(Reminder)
+        .options(joinedload(Reminder.highlight).joinedload(Highlight.source))
+        .filter(Reminder.user_id == user.id)
+        .order_by(Reminder.remind_at.asc())
+        .all()
+    )
+    return templates.TemplateResponse(
+        "reminders.html",
+        {
+            "request": request,
+            "reminders": reminders,
+            "now": now,
+            "current_user": user,
+        },
+    )
+
+
+@app.delete("/reminders/{reminder_id}")
+def dismiss_reminder_by_id(
+    reminder_id: str,
+    request: Request,
+    user: User = Depends(require_user),
+    db: Session = Depends(get_db),
+):
+    reminder = (
+        db.query(Reminder)
+        .filter(Reminder.id == reminder_id, Reminder.user_id == user.id)
+        .first()
+    )
+    if not reminder:
+        raise HTTPException(status_code=404, detail="Reminder not found")
+
+    db.delete(reminder)
+    db.commit()
+
+    if is_htmx(request):
+        return HTMLResponse("", status_code=200)
+    return RedirectResponse(url="/reminders", status_code=303)
 
 
 # Collections endpoints

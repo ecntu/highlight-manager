@@ -46,6 +46,7 @@ class User(Base):
     devices = relationship("Device", back_populates="user")
     sources = relationship("Source", back_populates="user")
     highlights = relationship("Highlight", back_populates="user")
+    reminders = relationship("Reminder", back_populates="user")
     tags = relationship("Tag", back_populates="user")
     collections = relationship("Collection", back_populates="user")
     digest_config = relationship("DigestConfig", back_populates="user", uselist=False)
@@ -151,6 +152,12 @@ class Highlight(Base):
     collections = relationship(
         "Collection", secondary="collection_items", back_populates="highlights"
     )
+    reminders = relationship(
+        "Reminder",
+        back_populates="highlight",
+        cascade="all, delete-orphan",
+        order_by="Reminder.remind_at",
+    )
 
     __table_args__ = (
         Index("ix_highlights_user_created", "user_id", "created_at"),
@@ -177,6 +184,28 @@ class Tag(Base):
     )
 
     __table_args__ = (Index("ix_tags_user_name", "user_id", "name", unique=True),)
+
+
+class Reminder(Base):
+    __tablename__ = "reminders"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(
+        String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    highlight_id = Column(
+        String(36), ForeignKey("highlights.id", ondelete="CASCADE"), nullable=False
+    )
+    remind_at = Column(DateTime, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    user = relationship("User", back_populates="reminders")
+    highlight = relationship("Highlight", back_populates="reminders")
+
+    __table_args__ = (
+        Index("ix_reminders_user_highlight", "user_id", "highlight_id"),
+        Index("ix_reminders_user_remind_at", "user_id", "remind_at"),
+    )
 
 
 class HighlightTag(Base):

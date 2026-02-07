@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+
+{% block title %}Reminders - PHM{% endblock %}
+
+{% block content %}
+<div class="section-header">
+    <h2 class="section-title">Reminders</h2>
+    <small class="section-meta">{{ reminders|length }} total</small>
+</div>
+
+<div>
+    {% if reminders %}
+    <div class="stack" style="gap: 10px;">
+        {% for reminder in reminders %}
+        <div id="reminder-{{ reminder.id }}" class="list-card row-between" style="gap: 12px;">
+            <div style="flex: 1; min-width: 0;">
+                <a href="/highlights/{{ reminder.highlight.id }}" style="color: inherit; text-decoration: none;">
+                    <p style="margin: 0 0 4px 0; font-size: 14px;">{{ reminder.highlight.text[:200] }}{% if
+                        reminder.highlight.text|length > 200 %}...{% endif %}</p>
+                </a>
+                <div class="row" style="gap: 8px; font-size: 12px;">
+                    {% if reminder.remind_at <= now %} <span class="pill pill--amber">Due</span>
+                        {% endif %}
+                        <span class="muted-2">{{ reminder.remind_at.strftime('%b %d, %Y') }}</span>
+                        {% if reminder.highlight.source %}
+                        <span class="meta-divider">·</span>
+                        <span class="muted">{{ reminder.highlight.source.name }}</span>
+                        {% endif %}
+                </div>
+            </div>
+            <button hx-delete="/reminders/{{ reminder.id }}" hx-target="#reminder-{{ reminder.id }}"
+                hx-swap="outerHTML swap:200ms" class="icon-btn"
+                style="width: 28px; height: 28px; color: #9ca3af; border-color: #e5e7eb;" title="Dismiss reminder"
+                aria-label="Dismiss reminder">
+                <svg class="icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                    stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <p class="muted-2" style="font-size: 14px;">No reminders yet.</p>
+    {% endif %}
+</div>
+{% endblock %}

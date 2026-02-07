@@ -5,9 +5,13 @@
 
 <div class="card">
     <h2 class="section-title" style="margin-bottom: 16px;">Account</h2>
-    <p class="muted" style="margin-bottom: 20px; font-size: 14px;">Signed in as <strong
-            style="color: #1a1a1a;">{{ current_user.username }}</strong></p>
-    <a href="/logout" class="btn btn--ghost btn--sm" style="text-decoration: none;">Logout</a>
+    <p class="muted" style="margin-bottom: 20px; font-size: 14px;">Signed in as <strong style="color: #1a1a1a;">{{
+            current_user.username }}</strong></p>
+    <div class="row" style="gap: 8px;">
+        <a href="/reminders" class="btn btn--ghost btn--sm" style="text-decoration: none;">Reminders</a>
+        <a href="/logout" class="btn btn--ghost btn--sm" style="text-decoration: none;">Logout</a>
+
+    </div>
 </div>
 
 <div class="card">
@@ -15,8 +19,7 @@
 
     <form hx-post="/devices" hx-target="#devices-table" hx-swap="outerHTML" style="margin-bottom: 28px;">
         <div class="row">
-            <input type="text" name="name" placeholder="Device name (e.g., iPhone, MacBook)" required
-                style="flex: 1;">
+            <input type="text" name="name" placeholder="Device name (e.g., iPhone, MacBook)" required style="flex: 1;">
             <button type="submit" class="btn btn--ghost">
                 Create Device Key
                 <span class="htmx-indicator">...</span>

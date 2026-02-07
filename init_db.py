@@ -4,6 +4,7 @@ from app.models import (
     Device,
     Source,
     Highlight,
+    Reminder,
     Tag,
     HighlightTag,
     Collection,

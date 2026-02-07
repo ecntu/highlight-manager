@@ -15,8 +15,7 @@
             </button>
             <button hx-delete="/collections/{{ collection.id }}"
                 hx-confirm="Are you sure you want to delete this collection?" hx-target="body"
-                hx-on::after-request="window.location='/collections'"
-                class="btn btn--danger btn--sm">
+                hx-on::after-request="window.location='/collections'" class="btn btn--danger btn--sm">
                 Delete
             </button>
         </div>
@@ -51,8 +50,7 @@
         {% for highlight in collection.highlights %}
         <div class="list-card" style="background: #f8f9fa; position: relative;">
             <button hx-delete="/collections/{{ collection.id }}/highlights/{{ highlight.id }}" hx-target="closest div"
-                hx-swap="outerHTML"
-                class="btn btn--danger btn--sm" style="position: absolute; top: 10px; right: 10px;">
+                hx-swap="outerHTML" class="btn btn--danger btn--sm" style="position: absolute; top: 10px; right: 10px;">
                 Remove
             </button>
             <p style="margin-bottom: 10px;">{{ highlight.text }}</p>

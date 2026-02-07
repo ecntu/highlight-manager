@@ -1,0 +1,60 @@
+<div id="reminders-panel">
+    <details {% if keep_open %}open{% endif %}
+        style="border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--panel); overflow: hidden;">
+        <summary
+            style="list-style: none; cursor: pointer; padding: 12px 14px; display: flex; justify-content: space-between; align-items: center;">
+            <span class="muted-2" style="font-size: 13px; font-weight: 500;">Reminders ({{
+                highlight.reminders|length }})</span>
+            <span class="muted-2" style="font-size: 18px; line-height: 1;">+</span>
+        </summary>
+        <div style="padding: 14px; border-top: 1px solid var(--border);">
+            <div style="margin-bottom: 14px;">
+                <form hx-post="/highlights/{{ highlight.id }}/reminders" hx-target="#reminders-panel"
+                    hx-swap="outerHTML">
+                    <input type="hidden" name="keep_open" value="1">
+                    <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; margin-bottom: 10px;">
+                        <button type="submit" class="btn btn--ghost btn--sm" style="padding: 6px 8px; font-size: 12px; white-space: nowrap;"
+                            name="preset" value="tomorrow">Tomorrow</button>
+                        <button type="submit" class="btn btn--ghost btn--sm" style="padding: 6px 8px; font-size: 12px; white-space: nowrap;"
+                            name="preset" value="next_week">Next wk</button>
+                        <button type="submit" class="btn btn--ghost btn--sm" style="padding: 6px 8px; font-size: 12px; white-space: nowrap;"
+                            name="preset" value="next_month">Next mo</button>
+                        <button type="submit" class="btn btn--ghost btn--sm" style="padding: 6px 8px; font-size: 12px; white-space: nowrap;"
+                            name="preset" value="next_year">Next yr</button>
+                    </div>
+                </form>
+                <form hx-post="/highlights/{{ highlight.id }}/reminders" hx-target="#reminders-panel"
+                    hx-swap="outerHTML">
+                    <input type="hidden" name="keep_open" value="1">
+                    <div class="row" style="gap: 8px; align-items: center; flex-wrap: wrap;">
+                        <input type="date" name="remind_on" required style="height: 40px; min-width: 180px; flex: 1;">
+                        <button type="submit" class="btn btn--ghost">Add date</button>
+                    </div>
+                </form>
+            </div>
+
+            {% if highlight.reminders %}
+            <div class="stack" style="gap: 8px;">
+                {% for reminder in highlight.reminders %}
+                <div id="highlight-reminder-{{ reminder.id }}" class="list-card row-between"
+                    style="padding: 10px 12px; gap: 12px;">
+                    <span class="muted" style="font-size: 13px;">{{ reminder.remind_at.strftime('%b %d, %Y') }}</span>
+                    <button hx-delete="/highlights/{{ highlight.id }}/reminders/{{ reminder.id }}"
+                        hx-target="#reminders-panel" hx-swap="outerHTML" class="icon-btn"
+                        style="width: 28px; height: 28px; color: #9ca3af; border-color: #e5e7eb;"
+                        title="Dismiss reminder" aria-label="Dismiss reminder">
+                        <svg class="icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                            stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p class="muted-2" style="font-size: 13px;">No reminders yet.</p>
+            {% endif %}
+        </div>
+    </details>
+</div>

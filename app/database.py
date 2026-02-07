@@ -87,6 +87,22 @@ def migrate_schema():
                 )
             )
 
+    if "reminders" in tables:
+        with engine.begin() as conn:
+            conn.execute(text("DROP INDEX IF EXISTS ix_reminders_user_highlight_unique"))
+            conn.execute(
+                text(
+                    "CREATE INDEX IF NOT EXISTS ix_reminders_user_highlight "
+                    "ON reminders (user_id, highlight_id)"
+                )
+            )
+            conn.execute(
+                text(
+                    "CREATE INDEX IF NOT EXISTS ix_reminders_user_remind_at "
+                    "ON reminders (user_id, remind_at)"
+                )
+            )
+
 
 def init_db_schema():
     Base.metadata.create_all(bind=engine)
