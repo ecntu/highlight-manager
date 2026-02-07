@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Depends, HTTPException, status, Form, Request, Response
+from fastapi import FastAPI, Depends, HTTPException, Form, Request, Response
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
@@ -9,7 +9,7 @@ from calendar import monthrange
 from urllib.parse import urlparse
 import secrets
 import re
-from typing import Optional
+from typing import Optional, Any
 from app.database import get_db, init_db_schema
 from app.models import (
     User,
@@ -76,7 +76,9 @@ def normalize_text_for_fingerprint(value: str) -> str:
     return re.sub(r"\s+", " ", value).strip().casefold()
 
 
-def build_import_fingerprint(source_id: Optional[str], original_text: str) -> Optional[str]:
+def build_import_fingerprint(
+    source_id: Optional[str], original_text: str
+) -> Optional[str]:
     if not source_id:
         return None
     normalized_text = normalize_text_for_fingerprint(original_text)
@@ -91,12 +93,39 @@ SOURCE_HIGHLIGHTS_PREVIEW_LIMIT = 25
 HOME_DUE_REMINDERS_LIMIT = 10
 
 
-def get_or_create_web_device(user_id: str, db: Session, backfill: bool = False) -> Device:
+def get_device_from_auth_header(auth_header: Optional[str], db: Session) -> Device:
+    if not auth_header:
+        raise HTTPException(status_code=401, detail="Invalid authorization")
+
+    api_key = None
+    if auth_header.startswith("Bearer "):
+        api_key = auth_header.replace("Bearer ", "", 1).strip()
+    elif auth_header.startswith("Token "):
+        api_key = auth_header.replace("Token ", "", 1).strip()
+
+    if not api_key:
+        raise HTTPException(status_code=401, detail="Invalid authorization")
+
+    device = None
+    for d in db.query(Device).filter(Device.revoked_at.is_(None)).all():
+        if verify_password(api_key, d.api_key_hash):
+            device = d
+            break
+
+    if not device:
+        raise HTTPException(status_code=401, detail="Invalid API key")
+
+    return device
+
+
+def get_or_create_web_device(
+    user_id: str, db: Session, backfill: bool = False
+) -> Device:
     device = (
         db.query(Device)
         .filter(
             Device.user_id == user_id,
-            Device.revoked_at == None,
+            Device.revoked_at.is_(None),
             Device.name == WEB_DEVICE_NAME,
         )
         .first()
@@ -117,7 +146,7 @@ def get_or_create_web_device(user_id: str, db: Session, backfill: bool = False) 
     if backfill:
         updated = (
             db.query(Highlight)
-            .filter(Highlight.user_id == user_id, Highlight.device_id == None)
+            .filter(Highlight.user_id == user_id, Highlight.device_id.is_(None))
             .update({Highlight.device_id: device.id})
         )
         if updated:
@@ -137,7 +166,7 @@ def cleanup_orphaned_sources(user_id: str, db: Session):
         .outerjoin(Highlight, Source.id == Highlight.source_id)
         .filter(
             Source.user_id == user_id,
-            Highlight.id == None,
+            Highlight.id.is_(None),
         )
         .all()
     )
@@ -253,6 +282,7 @@ def create_highlight_with_metadata(
     device_id: Optional[str],
     db: Session,
     dedupe_on_import: bool = False,
+    location: Optional[dict[str, Any]] = None,
 ) -> tuple[Highlight, bool]:
     source, url, page_title, page_author = get_or_create_source(
         user_id=user_id,
@@ -290,6 +320,7 @@ def create_highlight_with_metadata(
         url=url,
         page_title=page_title,
         page_author=page_author,
+        location=location,
         original_text=text,
         original_note=note,
         import_fingerprint=fingerprint,
@@ -453,7 +484,7 @@ def settings_page(
     get_or_create_web_device(user.id, db, backfill=True)
     devices = (
         db.query(Device)
-        .filter(Device.user_id == user.id, Device.revoked_at == None)
+        .filter(Device.user_id == user.id, Device.revoked_at.is_(None))
         .all()
     )
     return templates.TemplateResponse(
@@ -481,7 +512,7 @@ def create_device(
 
     devices = (
         db.query(Device)
-        .filter(Device.user_id == user.id, Device.revoked_at == None)
+        .filter(Device.user_id == user.id, Device.revoked_at.is_(None))
         .all()
     )
 
@@ -517,7 +548,11 @@ def roll_device_key(
 ):
     device = (
         db.query(Device)
-        .filter(Device.id == device_id, Device.user_id == user.id, Device.revoked_at == None)
+        .filter(
+            Device.id == device_id,
+            Device.user_id == user.id,
+            Device.revoked_at.is_(None),
+        )
         .first()
     )
     if not device:
@@ -533,7 +568,7 @@ def roll_device_key(
 
     devices = (
         db.query(Device)
-        .filter(Device.user_id == user.id, Device.revoked_at == None)
+        .filter(Device.user_id == user.id, Device.revoked_at.is_(None))
         .all()
     )
 
@@ -594,18 +629,7 @@ def api_create_highlight(
     db: Session = Depends(get_db),
 ):
     auth_header = request.headers.get("Authorization") if request else None
-    if not auth_header or not auth_header.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Invalid authorization")
-
-    api_key = auth_header.replace("Bearer ", "")
-    device = None
-    for d in db.query(Device).filter(Device.revoked_at == None).all():
-        if verify_password(api_key, d.api_key_hash):
-            device = d
-            break
-
-    if not device:
-        raise HTTPException(status_code=401, detail="Invalid API key")
+    device = get_device_from_auth_header(auth_header, db)
 
     device.last_used_at = datetime.utcnow()
     db.commit()
@@ -628,6 +652,57 @@ def api_create_highlight(
         device_id=device.id,
         db=db,
         dedupe_on_import=True,
+    )
+
+    if not created:
+        raise HTTPException(
+            status_code=409,
+            detail="Duplicate highlight for this source and original text",
+        )
+
+    return {"id": str(highlight.id), "created_at": highlight.created_at.isoformat()}
+
+
+@app.post("/api/highlights/moon-reader")
+async def api_create_highlight_moon_reader(
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    auth_header = request.headers.get("Authorization")
+    device = get_device_from_auth_header(auth_header, db)
+    device.last_used_at = datetime.utcnow()
+    db.commit()
+
+    payload = await request.json()
+    highlights = payload.get("highlights") if isinstance(payload, dict) else None
+    if not isinstance(highlights, list) or not highlights:
+        raise HTTPException(status_code=422, detail="Missing highlights payload")
+
+    data = highlights[0] if isinstance(highlights[0], dict) else None
+    if not data:
+        raise HTTPException(status_code=422, detail="Invalid highlight payload")
+
+    text = (data.get("text") or "").strip()
+    if not text:
+        raise HTTPException(status_code=422, detail="Missing highlight text")
+
+    note = (data.get("note") or "").strip() or None
+    source_title = (data.get("title") or "").strip() or None
+    source_author = (data.get("author") or "").strip() or None
+    chapter = (data.get("chapter") or "").strip() or None
+
+    highlight, created = create_highlight_with_metadata(
+        user_id=device.user_id,
+        text=text,
+        note=note,
+        tags=None,
+        source_url=None,
+        source_title=source_title,
+        source_author=source_author,
+        device_id=device.id,
+        db=db,
+        dedupe_on_import=True,
+        location={"chapter": chapter} if chapter else None,
     )
 
     if not created:
@@ -1085,7 +1160,11 @@ def sources_page(
     sources = (
         db.query(Source)
         .filter(Source.user_id == user.id)
-        .order_by(func.coalesce(Source.display_name, Source.original_name, Source.title, Source.domain))
+        .order_by(
+            func.coalesce(
+                Source.display_name, Source.original_name, Source.title, Source.domain
+            )
+        )
         .all()
     )
     return templates.TemplateResponse(
@@ -1302,7 +1381,7 @@ def search_page(
             query = query.filter(Highlight.status == HighlightStatus("active"))
 
         if favorite == "true":
-            query = query.filter(Highlight.is_favorite == True)
+            query = query.filter(Highlight.is_favorite.is_(True))
 
         # Apply sorting
         if sort == "recent-asc":
@@ -1338,7 +1417,7 @@ def search_page(
 
     devices = (
         db.query(Device)
-        .filter(Device.user_id == user.id, Device.revoked_at == None)
+        .filter(Device.user_id == user.id, Device.revoked_at.is_(None))
         .order_by(Device.created_at.desc())
         .all()
     )
