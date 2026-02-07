@@ -82,6 +82,8 @@ class Source(Base):
     domain = Column(Text, nullable=True)  # Only for web sources
     title = Column(Text, nullable=True)  # Only for books
     author = Column(Text, nullable=True)  # Only for books
+    original_name = Column(Text, nullable=True)
+    display_name = Column(Text, nullable=True)
     type = Column(SQLEnum(SourceType), nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(
@@ -94,7 +96,18 @@ class Source(Base):
     __table_args__ = (
         Index("ix_sources_user_domain", "user_id", "domain"),
         Index("ix_sources_user_title", "user_id", "title"),
+        Index("ix_sources_user_original_name", "user_id", "original_name"),
     )
+
+    @property
+    def name(self) -> str:
+        if self.display_name:
+            return self.display_name
+        if self.original_name:
+            return self.original_name
+        if self.type == SourceType.WEB:
+            return self.domain or "Unknown source"
+        return self.title or "Untitled source"
 
 
 class Highlight(Base):
@@ -112,6 +125,9 @@ class Highlight(Base):
     )
     text = Column(Text, nullable=False)
     note = Column(Text, nullable=True)
+    original_text = Column(Text, nullable=True)
+    original_note = Column(Text, nullable=True)
+    import_fingerprint = Column(Text, nullable=True)
     # Web-specific fields (nullable, only used when source.type == 'web')
     url = Column(Text, nullable=True)  # Full article URL
     page_title = Column(Text, nullable=True)  # Article title
@@ -141,6 +157,7 @@ class Highlight(Base):
         Index("ix_highlights_user_source", "user_id", "source_id"),
         Index("ix_highlights_user_favorite", "user_id", "is_favorite"),
         Index("ix_highlights_user_device", "user_id", "device_id"),
+        Index("ix_highlights_user_import_fingerprint", "user_id", "import_fingerprint"),
     )
 
 

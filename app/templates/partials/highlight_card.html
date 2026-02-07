@@ -20,15 +20,15 @@
             {% if highlight.source.type.value == 'web' %}
             {% if highlight.url %}
             <a href="{{ highlight.url }}" target="_blank"
-                style="color: #6b7280; text-decoration: none; transition: color 0.15s;">{{ highlight.source.domain
+                style="color: #6b7280; text-decoration: none; transition: color 0.15s;">{{ highlight.source.name
                 }}</a>
             {% else %}
-            <span>{{ highlight.source.domain }}</span>
+            <span>{{ highlight.source.name }}</span>
             {% endif %}
             {% else %}
             <a href="/sources/{{ highlight.source.id }}"
                 style="color: #6b7280; text-decoration: none; font-weight: 500; transition: color 0.15s;">{{
-                highlight.source.title }}</a>
+                highlight.source.name }}</a>
             {% endif %}
             {% endif %}
             {% if highlight.status.value == 'archived' %}
@@ -122,15 +122,15 @@
             {% if highlight.source.type.value == 'web' %}
             {% if highlight.url %}
             <a href="{{ highlight.url }}" target="_blank"
-                style="color: #6b7280; text-decoration: none; transition: color 0.15s;">{{ highlight.source.domain
+                style="color: #6b7280; text-decoration: none; transition: color 0.15s;">{{ highlight.source.name
                 }}</a>
             {% else %}
-            <span>{{ highlight.source.domain }}</span>
+            <span>{{ highlight.source.name }}</span>
             {% endif %}
             {% else %}
             <a href="/sources/{{ highlight.source.id }}"
                 style="color: #6b7280; text-decoration: none; font-weight: 500; transition: color 0.15s;">{{
-                highlight.source.title }}</a>
+                highlight.source.name }}</a>
             {% endif %}
             {% endif %}
         </div>

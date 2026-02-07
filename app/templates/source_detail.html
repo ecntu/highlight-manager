@@ -1,35 +1,98 @@
 {% extends "base.html" %}
 
-{% block title %}{{ source.title }} - PHM{% endblock %}
+{% block title %}{{ source.name }} - PHM{% endblock %}
 
 {% block content %}
+<style>
+    .source-settings-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 34px;
+        height: 34px;
+        padding: 0;
+    }
+
+    .source-settings-panel {
+        margin-top: 10px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-md);
+        padding: 14px;
+        background: var(--panel);
+    }
+</style>
 <div class="card">
     <div style="margin-bottom: 20px;">
-        <div class="row-between" style="align-items: start;">
+        <div class="row-between" style="align-items: start; margin-bottom: 10px;">
             <div>
-                <h2 class="section-title" style="margin-bottom: 10px;">{{ source.title }}</h2>
-                <div class="row" style="gap: 15px; font-size: 14px;">
-                    <span class="muted">{{ source.type.value.capitalize() }}</span>
+                <h2 class="section-title" style="margin-bottom: 10px;">{{ source.name }}</h2>
+                <div class="row" style="gap: 15px; align-items: center; font-size: 14px;">
                     {% if source.author %}
                     <span class="muted">{{ source.author }}</span>
+                    <span class="meta-divider">·</span>
                     {% endif %}
-                    <span class="muted-2">{{ highlights|length }} highlight{% if highlights|length != 1 %}s{% endif %}</span>
+                    <span class="muted">{{ source.type.value.capitalize() }}</span>
+                    <span class="meta-divider">·</span>
+                    <span class="muted-2">{{ highlight_count }} highlight{% if highlight_count != 1 %}s{% endif
+                        %}</span>
                 </div>
             </div>
-            <a href="/sources" class="btn btn--ghost btn--sm" style="text-decoration: none;">
-                ← Back to Sources
-            </a>
+            <div class="row" style="gap: 8px; align-items: center;">
+                <button type="button" id="source-settings-toggle" class="icon-btn source-settings-btn"
+                    aria-label="Source settings" title="Source settings" aria-expanded="false">
+                    <svg class="icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                </button>
+                <a href="/sources" class="btn btn--ghost btn--sm" style="text-decoration: none;">
+                    ← Back to Sources
+                </a>
+            </div>
         </div>
-        {% if source.url %}
-        <div style="margin-top: 10px;">
-            <a href="{{ source.url }}" target="_blank" style="color: #4a90e2; font-size: 14px;">{{ source.url }}</a>
+
+        <div id="source-settings-panel" class="source-settings-panel" style="display: none;">
+            <div style="font-size: 13px; line-height: 1.5; margin-bottom: 12px;">
+                <p class="muted-2" style="margin: 0 0 4px 0;">Original name: {{ source.original_name or source.title or
+                    source.domain or "Unknown" }}</p>
+                <p class="muted-2" style="margin: 0 0 4px 0;">Import identity stays unchanged when you rename display
+                    text.</p>
+            </div>
+            <form hx-patch="/sources/{{ source.id }}" hx-swap="none">
+                <div class="grid-two" style="margin-bottom: 10px;">
+                    <input type="text" name="display_name" value="{{ source.name }}" required style="height: 40px;">
+                    <input type="text" name="source_author" value="{{ source.author or '' }}"
+                        placeholder="Author (optional)" style="height: 40px;">
+                </div>
+                <div style="margin-bottom: 10px;">
+                    <select name="source_type" style="height: 40px; width: 220px; max-width: 100%;">
+                        <option value="book" {% if source.type.value=='book' %}selected{% endif %}>Book</option>
+                        <option value="web" {% if source.type.value=='web' %}selected{% endif %}>Web</option>
+                    </select>
+                </div>
+                <div class="row" style="justify-content: flex-end;">
+                    <button type="submit" class="btn btn--ghost btn--sm">Save</button>
+                </div>
+            </form>
         </div>
-        {% endif %}
     </div>
 </div>
 
 <div class="card">
-    <h3 class="section-title" style="margin-bottom: 15px;">Highlights from this source</h3>
+    <div class="row-between" style="margin-bottom: 8px; gap: 10px; flex-wrap: wrap;">
+        <h3 class="section-title" style="margin: 0;">Highlights from this source</h3>
+        <a href="/search?source_id={{ source.id }}" class="btn btn--ghost btn--sm" style="text-decoration: none;">
+            Search highlights
+        </a>
+    </div>
+    {% if highlight_count > preview_limit %}
+    <p class="muted-2" style="margin: 0 0 14px 0; font-size: 13px;">
+        Showing the {{ preview_limit }} most recent highlights
+    </p>
+    {% endif %}
 
     {% if highlights %}
     <div id="highlights-list" class="stack">
@@ -42,7 +105,8 @@
                 {% endif %}
             </div>
             {% if highlight.note %}
-            <div style="background: #f8f9fa; padding: 10px; border-left: 3px solid #4a90e2; margin-bottom: 8px; font-size: 14px; color: #666;">
+            <div
+                style="background: #f8f9fa; padding: 10px; border-left: 3px solid #4a90e2; margin-bottom: 8px; font-size: 14px; color: #666;">
                 {{ highlight.note }}
             </div>
             {% endif %}
@@ -63,4 +127,16 @@
     <p class="muted" style="text-align: center; padding: 40px 0;">No highlights from this source yet.</p>
     {% endif %}
 </div>
+<script>
+    (function () {
+        const toggle = document.getElementById('source-settings-toggle');
+        const panel = document.getElementById('source-settings-panel');
+        if (!toggle || !panel) return;
+        toggle.addEventListener('click', function () {
+            const isOpen = panel.style.display !== 'none';
+            panel.style.display = isOpen ? 'none' : 'block';
+            toggle.setAttribute('aria-expanded', isOpen ? 'false' : 'true');
+        });
+    })();
+</script>
 {% endblock %}

@@ -3,13 +3,13 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
 from sqlalchemy.orm import Session, joinedload
-from sqlalchemy import or_
+from sqlalchemy import or_, func
 from datetime import datetime
 from urllib.parse import urlparse
 import secrets
 import re
 from typing import Optional
-from app.database import get_db
+from app.database import get_db, init_db_schema
 from app.models import (
     User,
     Highlight,
@@ -27,6 +27,7 @@ from app.config import settings
 app = FastAPI(title="Personal Highlight Manager")
 app.add_middleware(SessionMiddleware, secret_key=settings.secret_key)
 templates = Jinja2Templates(directory="app/templates")
+init_db_schema()
 
 
 def highlight_matches(text: str, search_term: str) -> str:
@@ -69,8 +70,22 @@ def normalize_url(url: str) -> str:
     return url
 
 
+def normalize_text_for_fingerprint(value: str) -> str:
+    return re.sub(r"\s+", " ", value).strip().casefold()
+
+
+def build_import_fingerprint(source_id: Optional[str], original_text: str) -> Optional[str]:
+    if not source_id:
+        return None
+    normalized_text = normalize_text_for_fingerprint(original_text)
+    if not normalized_text:
+        return None
+    return f"{source_id}::{normalized_text}"
+
+
 WEB_DEVICE_NAME = "Web"
 WEB_DEVICE_PREFIX = "web"
+SOURCE_HIGHLIGHTS_PREVIEW_LIMIT = 25
 
 
 def get_or_create_web_device(user_id: str, db: Session, backfill: bool = False) -> Device:
@@ -129,6 +144,74 @@ def cleanup_orphaned_sources(user_id: str, db: Session):
         db.commit()
 
 
+def get_or_create_source(
+    user_id: str,
+    source_url: Optional[str],
+    source_title: Optional[str],
+    source_author: Optional[str],
+    db: Session,
+) -> tuple[Optional[Source], Optional[str], Optional[str], Optional[str]]:
+    source = None
+    url = None
+    page_title = None
+    page_author = None
+
+    if source_url:
+        source_url = normalize_url(source_url)
+        parsed = urlparse(source_url)
+        domain = parsed.netloc or None
+
+        if domain:
+            source = (
+                db.query(Source)
+                .filter(
+                    Source.user_id == user_id,
+                    Source.type == SourceType.WEB,
+                    Source.domain == domain,
+                )
+                .first()
+            )
+            if not source:
+                source = Source(
+                    user_id=user_id,
+                    domain=domain,
+                    type=SourceType.WEB,
+                    original_name=domain,
+                    display_name=domain,
+                )
+                db.add(source)
+                db.flush()
+
+            url = source_url
+            page_title = source_title
+            page_author = source_author
+    elif source_title:
+        source = (
+            db.query(Source)
+            .filter(
+                Source.user_id == user_id,
+                Source.type == SourceType.BOOK,
+                Source.title.ilike(source_title),
+            )
+            .first()
+        )
+        if not source:
+            source = Source(
+                user_id=user_id,
+                title=source_title,
+                author=source_author,
+                type=SourceType.BOOK,
+                original_name=source_title,
+                display_name=source_title,
+            )
+            db.add(source)
+            db.flush()
+        elif source_author and not source.author:
+            source.author = source_author
+
+    return source, url, page_title, page_author
+
+
 def create_highlight_with_metadata(
     user_id: str,
     text: str,
@@ -139,68 +222,34 @@ def create_highlight_with_metadata(
     source_author: Optional[str],
     device_id: Optional[str],
     db: Session,
-) -> Highlight:
-    source_id = None
-    url = None
-    page_title = None
-    page_author = None
+    dedupe_on_import: bool = False,
+) -> tuple[Highlight, bool]:
+    source, url, page_title, page_author = get_or_create_source(
+        user_id=user_id,
+        source_url=source_url,
+        source_title=source_title,
+        source_author=source_author,
+        db=db,
+    )
+    source_id = source.id if source else None
+    fingerprint = build_import_fingerprint(source_id, text)
 
-    if source_url or source_title:
-        # Web source: extract domain and create/find domain-level source
-        if source_url:
-            source_url = normalize_url(source_url)
-            parsed = urlparse(source_url)
-            domain = parsed.netloc or None
-
-            if domain:
-                # Find or create domain-level source
-                source = (
-                    db.query(Source)
-                    .filter(
-                        Source.user_id == user_id,
-                        Source.type == SourceType.WEB,
-                        Source.domain == domain,
-                    )
-                    .first()
-                )
-
-                if not source:
-                    source = Source(
-                        user_id=user_id,
-                        domain=domain,
-                        type=SourceType.WEB,
-                    )
-                    db.add(source)
-                    db.flush()
-
-                source_id = source.id
-                url = source_url
-                page_title = source_title
-                page_author = source_author
-
-        # Book source: match by title
-        elif source_title:
-            source = (
-                db.query(Source)
-                .filter(
-                    Source.user_id == user_id,
-                    Source.type == SourceType.BOOK,
-                    Source.title.ilike(source_title),
-                )
-                .first()
+    if dedupe_on_import and fingerprint:
+        existing = (
+            db.query(Highlight)
+            .filter(
+                Highlight.user_id == user_id,
+                Highlight.source_id == source_id,
+                or_(
+                    Highlight.import_fingerprint == fingerprint,
+                    Highlight.original_text == text,
+                    Highlight.text == text,
+                ),
             )
-
-            if not source:
-                source = Source(
-                    user_id=user_id,
-                    title=source_title,
-                    author=source_author,
-                    type=SourceType.BOOK,
-                )
-                db.add(source)
-                db.flush()
-
-            source_id = source.id
+            .first()
+        )
+        if existing:
+            return existing, False
 
     highlight = Highlight(
         user_id=user_id,
@@ -211,6 +260,9 @@ def create_highlight_with_metadata(
         url=url,
         page_title=page_title,
         page_author=page_author,
+        original_text=text,
+        original_note=note,
+        import_fingerprint=fingerprint,
     )
     db.add(highlight)
     db.flush()
@@ -231,7 +283,7 @@ def create_highlight_with_metadata(
 
     db.commit()
     db.refresh(highlight)
-    return highlight
+    return highlight, True
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -324,7 +376,7 @@ def create_highlight(
     note = note.strip() if note else None
 
     web_device = get_or_create_web_device(user.id, db)
-    highlight = create_highlight_with_metadata(
+    highlight, _ = create_highlight_with_metadata(
         user_id=user.id,
         text=text,
         note=note,
@@ -392,7 +444,12 @@ def create_device(
     if is_htmx(request):
         return templates.TemplateResponse(
             "partials/devices_table.html",
-            {"request": request, "devices": devices, "new_api_key": api_key},
+            {
+                "request": request,
+                "devices": devices,
+                "new_api_key": api_key,
+                "new_api_key_device_name": device.name,
+            },
         )
 
     return templates.TemplateResponse(
@@ -402,6 +459,58 @@ def create_device(
             "current_user": user,
             "devices": devices,
             "new_api_key": api_key,
+            "new_api_key_device_name": device.name,
+        },
+    )
+
+
+@app.post("/devices/{device_id}/roll")
+def roll_device_key(
+    request: Request,
+    device_id: str,
+    user: User = Depends(require_user),
+    db: Session = Depends(get_db),
+):
+    device = (
+        db.query(Device)
+        .filter(Device.id == device_id, Device.user_id == user.id, Device.revoked_at == None)
+        .first()
+    )
+    if not device:
+        raise HTTPException(status_code=404, detail="Device not found")
+    if device.name == WEB_DEVICE_NAME:
+        raise HTTPException(status_code=400, detail="Web device key cannot be rolled")
+
+    prefix = device.prefix or "phm_live"
+    api_key = f"{prefix}_{secrets.token_urlsafe(32)}"
+    device.api_key_hash = hash_password(api_key)
+    device.last_used_at = None
+    db.commit()
+
+    devices = (
+        db.query(Device)
+        .filter(Device.user_id == user.id, Device.revoked_at == None)
+        .all()
+    )
+
+    if is_htmx(request):
+        return templates.TemplateResponse(
+            "partials/devices_table.html",
+            {
+                "request": request,
+                "devices": devices,
+                "new_api_key": api_key,
+                "new_api_key_device_name": device.name,
+            },
+        )
+    return templates.TemplateResponse(
+        "settings.html",
+        {
+            "request": request,
+            "current_user": user,
+            "devices": devices,
+            "new_api_key": api_key,
+            "new_api_key_device_name": device.name,
         },
     )
 
@@ -464,7 +573,7 @@ def api_create_highlight(
     tags = tags.strip() if tags else None
     note = note.strip() if note else None
 
-    highlight = create_highlight_with_metadata(
+    highlight, created = create_highlight_with_metadata(
         user_id=device.user_id,
         text=text,
         note=note,
@@ -474,7 +583,14 @@ def api_create_highlight(
         source_author=source_author or None,
         device_id=device.id,
         db=db,
+        dedupe_on_import=True,
     )
+
+    if not created:
+        raise HTTPException(
+            status_code=409,
+            detail="Duplicate highlight for this source and original text",
+        )
 
     return {"id": str(highlight.id), "created_at": highlight.created_at.isoformat()}
 
@@ -541,6 +657,12 @@ def update_highlight(
     if not highlight:
         raise HTTPException(status_code=404, detail="Highlight not found")
 
+    if highlight.original_text is None:
+        highlight.original_text = highlight.text
+    if highlight.original_note is None:
+        highlight.original_note = highlight.note
+
+    note = note.strip() if note else None
     highlight.text = text
     highlight.note = note
     highlight.updated_at = datetime.utcnow()
@@ -572,53 +694,27 @@ def update_highlight(
             highlight.tags.append(tag)
 
     if source_url or source_title:
-        # Normalize URL (add scheme if missing) and extract domain
-        domain = None
-        if source_url:
-            source_url = normalize_url(source_url)
-            parsed = urlparse(source_url)
-            domain = parsed.netloc or None
-
-        # If only URL provided, use domain as title
-        if source_url and not source_title:
-            source_title = domain or source_url
-
-        # Match by URL if provided, otherwise by title
-        if source_url:
-            source = (
-                db.query(Source)
-                .filter(
-                    Source.user_id == user.id,
-                    Source.url == source_url,
-                )
-                .first()
-            )
-        else:
-            source = (
-                db.query(Source)
-                .filter(
-                    Source.user_id == user.id,
-                    Source.title.ilike(source_title),
-                )
-                .first()
-            )
-
-        if not source:
-            # Infer type: if url provided it's web, otherwise book
-            source_type = SourceType.WEB if source_url else SourceType.BOOK
-            source = Source(
-                user_id=user.id,
-                url=source_url,
-                domain=domain,
-                title=source_title,
-                author=source_author,
-                type=source_type,
-            )
-            db.add(source)
-            db.flush()
-        highlight.source_id = source.id
+        source, resolved_url, page_title, page_author = get_or_create_source(
+            user_id=user.id,
+            source_url=source_url,
+            source_title=source_title,
+            source_author=source_author,
+            db=db,
+        )
+        highlight.source_id = source.id if source else None
+        highlight.url = resolved_url
+        highlight.page_title = page_title
+        highlight.page_author = page_author
+        fingerprint_text = highlight.original_text or text
+        highlight.import_fingerprint = build_import_fingerprint(
+            highlight.source_id, fingerprint_text
+        )
     else:
         highlight.source_id = None
+        highlight.url = None
+        highlight.page_title = None
+        highlight.page_author = None
+        highlight.import_fingerprint = None
 
     db.commit()
     db.refresh(highlight)
@@ -827,7 +923,10 @@ def sources_page(
     db: Session = Depends(get_db),
 ):
     sources = (
-        db.query(Source).filter(Source.user_id == user.id).order_by(Source.title).all()
+        db.query(Source)
+        .filter(Source.user_id == user.id)
+        .order_by(func.coalesce(Source.display_name, Source.original_name, Source.title, Source.domain))
+        .all()
     )
     return templates.TemplateResponse(
         "sources.html",
@@ -849,9 +948,19 @@ def source_detail(
     )
     if not source:
         raise HTTPException(status_code=404, detail="Source not found")
-
-    # Redirect to search with source filter
-    return RedirectResponse(url=f"/search?source_id={source_id}", status_code=303)
+    highlight_count = (
+        db.query(Highlight)
+        .filter(Highlight.source_id == source_id, Highlight.user_id == user.id)
+        .count()
+    )
+    highlights = (
+        db.query(Highlight)
+        .options(joinedload(Highlight.tags))
+        .filter(Highlight.source_id == source_id, Highlight.user_id == user.id)
+        .order_by(Highlight.created_at.desc())
+        .limit(SOURCE_HIGHLIGHTS_PREVIEW_LIMIT)
+        .all()
+    )
 
     return templates.TemplateResponse(
         "source_detail.html",
@@ -859,9 +968,51 @@ def source_detail(
             "request": request,
             "source": source,
             "highlights": highlights,
+            "highlight_count": highlight_count,
+            "preview_limit": SOURCE_HIGHLIGHTS_PREVIEW_LIMIT,
             "current_user": user,
         },
     )
+
+
+@app.patch("/sources/{source_id}")
+def update_source_name(
+    source_id: str,
+    request: Request,
+    display_name: str = Form(),
+    source_author: Optional[str] = Form(None),
+    source_type: Optional[str] = Form(None),
+    user: User = Depends(require_user),
+    db: Session = Depends(get_db),
+):
+    source = (
+        db.query(Source)
+        .filter(Source.id == source_id, Source.user_id == user.id)
+        .first()
+    )
+    if not source:
+        raise HTTPException(status_code=404, detail="Source not found")
+
+    display_name = display_name.strip()
+    if not display_name:
+        raise HTTPException(status_code=400, detail="Display name cannot be empty")
+
+    source_author = source_author.strip() if source_author else None
+    if source_type:
+        source_type = source_type.strip().lower()
+        if source_type not in {SourceType.BOOK.value, SourceType.WEB.value}:
+            raise HTTPException(status_code=400, detail="Invalid source type")
+        source.type = SourceType(source_type)
+    source.display_name = display_name
+    source.author = source_author
+    source.updated_at = datetime.utcnow()
+    db.commit()
+
+    if is_htmx(request):
+        response = Response(status_code=200)
+        response.headers["HX-Redirect"] = f"/sources/{source_id}"
+        return response
+    return RedirectResponse(url=f"/sources/{source_id}", status_code=303)
 
 
 # Quick search for nav dropdown
@@ -899,11 +1050,7 @@ def search_quick(
         preview = h.text[:100] + "..." if len(h.text) > 100 else h.text
         # Apply highlighting
         highlighted_preview = highlight_matches(preview, q)
-        source_text = (
-            h.source.domain
-            if h.source and h.source.type.value == "web"
-            else (h.source.title if h.source else "No source")
-        )
+        source_text = h.source.name if h.source else "No source"
 
         html += f"""
         <a href="/highlights/{h.id}" class="search-dropdown-item" style="text-decoration: none; color: inherit; display: block;">

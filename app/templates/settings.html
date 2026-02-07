@@ -13,16 +13,6 @@
 <div class="card">
     <h2 class="section-title" style="margin-bottom: 20px;">Device API Keys</h2>
 
-    {% if new_api_key %}
-    <div
-        style="background: #f0fdf4; border: 1px solid #86efac; padding: 16px; border-radius: 8px; margin-bottom: 20px;">
-        <strong style="color: #15803d;">New API Key Created!</strong><br>
-        <p style="margin: 10px 0 8px 0; color: #166534; font-size: 14px;">Save this key - it won't be shown again:</p>
-        <code
-            style="background: white; padding: 10px; display: block; word-break: break-all; border-radius: 6px; font-size: 13px; border: 1px solid #d1d5db;">{{ new_api_key }}</code>
-    </div>
-    {% endif %}
-
     <form hx-post="/devices" hx-target="#devices-table" hx-swap="outerHTML" style="margin-bottom: 28px;">
         <div class="row">
             <input type="text" name="name" placeholder="Device name (e.g., iPhone, MacBook)" required
@@ -35,9 +25,7 @@
     </form>
 
     <h3 style="margin-bottom: 16px; font-size: 15px; font-weight: 600; color: #1a1a1a;">Active Devices</h3>
-    <div id="devices-table">
-        {% include "partials/devices_table.html" %}
-    </div>
+    {% include "partials/devices_table.html" %}
 
     <!-- Usage Instructions -->
     <div style="margin-top: 32px; padding-top: 32px; border-top: 1px solid #e5e5e5;">

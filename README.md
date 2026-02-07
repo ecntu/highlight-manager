@@ -26,6 +26,5 @@ Visit http://localhost:8000
 
 ## TODOs
 - [ ] test MoonReader sync
-- [ ] allow for editing highlights and source names while avoiding duplicates on re-import
 - [ ] resurfacing features (reminders, random, digests)
 - [ ] read-only API keys to export / mcp

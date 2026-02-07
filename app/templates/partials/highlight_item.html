@@ -24,11 +24,7 @@
             <a href="/search?source_id={{ highlight.source.id }}"
                 style="color: #6b7280; text-decoration: none; transition: color 0.15s;"
                 onmouseover="this.style.color='#111827';" onmouseout="this.style.color='#6b7280';">
-                {% if highlight.source.type.value == 'web' %}
-                {{ highlight.source.domain }}
-                {% else %}
-                {{ highlight.source.title }}
-                {% endif %}
+                {{ highlight.source.name }}
             </a>
             {% endif %}
 

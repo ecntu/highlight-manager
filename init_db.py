@@ -1,4 +1,4 @@
-from app.database import engine, Base
+from app.database import init_db_schema
 from app.models import (
     User,
     Device,
@@ -11,10 +11,8 @@ from app.models import (
     HighlightLink,
     DigestConfig,
 )
-
-
 def init_db():
-    Base.metadata.create_all(bind=engine)
+    init_db_schema()
 
 
 if __name__ == "__main__":

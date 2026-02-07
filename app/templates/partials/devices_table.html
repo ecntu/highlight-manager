@@ -1,28 +1,53 @@
-{% if devices %}
-<div class="stack" style="gap: 10px;">
-    {% for device in devices %}
-    <div id="device-{{ device.id }}" class="list-card row-between">
-        <div style="flex: 1; min-width: 0;">
-            <div style="font-weight: 500; font-size: 14px; color: #1a1a1a; margin-bottom: 4px;">{{ device.name }}</div>
-            <div class="row" style="gap: 12px; font-size: 13px;">
-                <span>Created {{ device.created_at.strftime('%b %d, %Y') }}</span>
-                <span class="meta-divider">·</span>
-                <span class="muted-2">Last used {% if device.last_used_at %}{{ device.last_used_at.strftime('%b %d, %Y') }}{% else %}never{% endif %}</span>
-            </div>
+<div id="devices-table">
+    {% if new_api_key %}
+    <div
+        style="background: #f0fdf4; border: 1px solid #86efac; padding: 16px; border-radius: 8px; margin-bottom: 20px;">
+        <strong style="color: #15803d;">API Key Ready{% if new_api_key_device_name %} for {{ new_api_key_device_name }}{% endif %}</strong><br>
+        <p style="margin: 10px 0 8px 0; color: #166534; font-size: 14px;">Save this key - it won't be shown again:</p>
+        <code id="new-api-key-value"
+            style="background: white; padding: 10px; display: block; word-break: break-all; border-radius: 6px; font-size: 13px; border: 1px solid #d1d5db;">{{ new_api_key }}</code>
+        <div style="margin-top: 10px;">
+            <button type="button" class="btn btn--ghost btn--sm"
+                onclick="navigator.clipboard.writeText(document.getElementById('new-api-key-value').textContent.trim()); this.textContent='Copied'; setTimeout(() => this.textContent='Copy key', 1200);">
+                Copy key
+            </button>
         </div>
-        {% if device.name != 'Web' %}
-        <button hx-delete="/devices/{{ device.id }}" hx-target="#device-{{ device.id }}" hx-swap="outerHTML swap:200ms"
-            hx-confirm="Revoke this device key?"
-            class="btn btn--ghost btn--sm">
-            Revoke
-        </button>
-        {% else %}
-        <span class="pill" style="background: #f3f4f6; color: #6b7280; border: 1px solid #e5e7eb;">Default</span>
-        {% endif %}
     </div>
-    {% endfor %}
+    {% endif %}
+
+    {% if devices %}
+    <div class="stack" style="gap: 10px;">
+        {% for device in devices %}
+        <div id="device-{{ device.id }}" class="list-card row-between">
+            <div style="flex: 1; min-width: 0;">
+                <div style="font-weight: 500; font-size: 14px; color: #1a1a1a; margin-bottom: 4px;">{{ device.name }}</div>
+                <div class="row" style="gap: 12px; font-size: 13px;">
+                    <span>Created {{ device.created_at.strftime('%b %d, %Y') }}</span>
+                    <span class="meta-divider">·</span>
+                    <span class="muted-2">Last used {% if device.last_used_at %}{{ device.last_used_at.strftime('%b %d, %Y') }}{% else %}never{% endif %}</span>
+                </div>
+            </div>
+            {% if device.name != 'Web' %}
+            <div class="row" style="gap: 8px;">
+                <button hx-post="/devices/{{ device.id }}/roll" hx-target="#devices-table" hx-swap="outerHTML"
+                    hx-confirm="Roll API key for this device? Existing key will stop working."
+                    class="btn btn--ghost btn--sm">
+                    Roll key
+                </button>
+                <button hx-delete="/devices/{{ device.id }}" hx-target="#device-{{ device.id }}" hx-swap="outerHTML swap:200ms"
+                    hx-confirm="Revoke this device key?"
+                    class="btn btn--ghost btn--sm">
+                    Revoke
+                </button>
+            </div>
+            {% else %}
+            <span class="pill" style="background: #f3f4f6; color: #6b7280; border: 1px solid #e5e7eb;">Default</span>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <p class="muted-2" style="font-size: 14px;">No devices yet. Create one above to start capturing highlights from other
+        devices.</p>
+    {% endif %}
 </div>
-{% else %}
-<p class="muted-2" style="font-size: 14px;">No devices yet. Create one above to start capturing highlights from other
-    devices.</p>
-{% endif %}
