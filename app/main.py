@@ -1,5 +1,6 @@
 from fastapi import FastAPI, Depends, HTTPException, Form, Query, Request, Response
 from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.exception_handlers import http_exception_handler
 from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
 from sqlalchemy.orm import Session, joinedload
@@ -28,9 +29,31 @@ from app.auth import hash_password, verify_password
 from app.config import settings
 
 app = FastAPI(title="Personal Highlight Manager")
-app.add_middleware(SessionMiddleware, secret_key=settings.secret_key)
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=settings.secret_key,
+    session_cookie=settings.session_cookie_name,
+    max_age=settings.session_max_age_seconds,
+    same_site=settings.session_same_site,
+    https_only=settings.session_https_only,
+)
 templates = Jinja2Templates(directory="app/templates")
 init_db_schema()
+
+
+@app.exception_handler(HTTPException)
+async def app_http_exception_handler(request: Request, exc: HTTPException):
+    if (
+        exc.status_code == 401
+        and exc.detail == "Not authenticated"
+        and not request.url.path.startswith("/api/")
+    ):
+        if is_htmx(request):
+            response = Response(status_code=200)
+            response.headers["HX-Redirect"] = "/login"
+            return response
+        return RedirectResponse(url="/login", status_code=303)
+    return await http_exception_handler(request, exc)
 
 
 def highlight_matches(text: str, search_term: str) -> str:
@@ -434,12 +457,18 @@ def serialize_highlight_detail(highlight: Highlight) -> dict[str, Any]:
 
 
 @app.get("/", response_class=HTMLResponse)
-def home(request: Request):
+def home(request: Request, db: Session = Depends(get_db)):
+    user = get_session_user(request, db)
+    if user:
+        return RedirectResponse(url="/highlights", status_code=303)
     return templates.TemplateResponse("login.html", {"request": request})
 
 
 @app.get("/register", response_class=HTMLResponse)
-def register_page(request: Request):
+def register_page(request: Request, db: Session = Depends(get_db)):
+    user = get_session_user(request, db)
+    if user:
+        return RedirectResponse(url="/highlights", status_code=303)
     return templates.TemplateResponse("register.html", {"request": request})
 
 
@@ -464,7 +493,10 @@ def register(
 
 
 @app.get("/login", response_class=HTMLResponse)
-def login_page(request: Request):
+def login_page(request: Request, db: Session = Depends(get_db)):
+    user = get_session_user(request, db)
+    if user:
+        return RedirectResponse(url="/highlights", status_code=303)
     return templates.TemplateResponse("login.html", {"request": request})
 
 
