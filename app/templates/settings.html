@@ -20,8 +20,12 @@
     <form hx-post="/devices" hx-target="#devices-table" hx-swap="outerHTML" style="margin-bottom: 28px;">
         <div class="row">
             <input type="text" name="name" placeholder="Device name (e.g., iPhone, MacBook)" required style="flex: 1;">
+            <select name="scope" style="flex: 0 0 140px; width: 140px;">
+                <option value="add_only">Add only</option>
+                <option value="read_only">Read only</option>
+            </select>
             <button type="submit" class="btn btn--ghost">
-                Create Device Key
+                Create
                 <span class="htmx-indicator">...</span>
             </button>
         </div>
@@ -49,7 +53,11 @@ curl -X POST {{ request.url.scheme }}://{{ request.url.netloc }}/api/highlights 
   -H "Authorization: Bearer YOUR_API_KEY" \
   -F "text=Your highlight text" \
   -F "source_title=Book Title" \
-  -F "source_author=Author Name"</pre>
+  -F "source_author=Author Name"
+
+# Read-only keys can fetch highlights:
+curl "{{ request.url.scheme }}://{{ request.url.netloc }}/api/highlights?limit=20" \
+  -H "Authorization: Bearer YOUR_READ_ONLY_KEY"</pre>
     </div>
 </div>
 {% endblock %}

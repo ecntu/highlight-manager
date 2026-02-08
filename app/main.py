@@ -1,15 +1,15 @@
-from fastapi import FastAPI, Depends, HTTPException, Form, Request, Response
+from fastapi import FastAPI, Depends, HTTPException, Form, Query, Request, Response
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import or_, func
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from calendar import monthrange
 from urllib.parse import urlparse
 import secrets
 import re
-from typing import Optional, Any
+from typing import Optional, Any, Literal
 from app.database import get_db, init_db_schema
 from app.models import (
     User,
@@ -19,6 +19,7 @@ from app.models import (
     Tag,
     SourceType,
     HighlightStatus,
+    DeviceScope,
     Collection,
     CollectionItem,
     Reminder,
@@ -91,9 +92,15 @@ WEB_DEVICE_NAME = "Web"
 WEB_DEVICE_PREFIX = "web"
 SOURCE_HIGHLIGHTS_PREVIEW_LIMIT = 25
 HOME_DUE_REMINDERS_LIMIT = 10
+API_HIGHLIGHTS_DEFAULT_LIMIT = 20
+API_HIGHLIGHTS_MAX_LIMIT = 100
 
 
-def get_device_from_auth_header(auth_header: Optional[str], db: Session) -> Device:
+def get_device_from_auth_header(
+    auth_header: Optional[str],
+    db: Session,
+    required_scope: Literal["read", "write"],
+) -> Device:
     if not auth_header:
         raise HTTPException(status_code=401, detail="Invalid authorization")
 
@@ -114,6 +121,16 @@ def get_device_from_auth_header(auth_header: Optional[str], db: Session) -> Devi
 
     if not device:
         raise HTTPException(status_code=401, detail="Invalid API key")
+
+    if device.scope == DeviceScope.WEB:
+        raise HTTPException(status_code=403, detail="Web keys cannot access the API")
+    if required_scope == "read" and device.scope != DeviceScope.READ_ONLY:
+        raise HTTPException(status_code=403, detail="Token is not read-only")
+    if required_scope == "write" and device.scope != DeviceScope.ADD_ONLY:
+        raise HTTPException(status_code=403, detail="Token is not add-only")
+
+    device.last_used_at = datetime.utcnow()
+    db.commit()
 
     return device
 
@@ -138,6 +155,7 @@ def get_or_create_web_device(
             name=WEB_DEVICE_NAME,
             api_key_hash=hash_password(api_key),
             prefix=WEB_DEVICE_PREFIX,
+            scope=DeviceScope.WEB,
         )
         db.add(device)
         db.flush()
@@ -347,6 +365,74 @@ def create_highlight_with_metadata(
     return highlight, True
 
 
+def parse_api_datetime(raw: Optional[str], field_name: str) -> Optional[datetime]:
+    if not raw:
+        return None
+    value = raw.strip()
+    if not value:
+        return None
+    normalized = value.replace("Z", "+00:00")
+    try:
+        parsed = datetime.fromisoformat(normalized)
+        if parsed.tzinfo is not None:
+            return parsed.astimezone(timezone.utc).replace(tzinfo=None)
+        return parsed
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=422, detail=f"Invalid datetime for {field_name}"
+        ) from exc
+
+
+def serialize_highlight_summary(highlight: Highlight) -> dict[str, Any]:
+    source = highlight.source
+    return {
+        "id": str(highlight.id),
+        "text": highlight.text,
+        "note": highlight.note,
+        "is_favorite": highlight.is_favorite,
+        "created_at": highlight.created_at.isoformat(),
+        "highlighted_at": (
+            highlight.highlighted_at.isoformat() if highlight.highlighted_at else None
+        ),
+        "source": (
+            {
+                "id": str(source.id),
+                "type": source.type.value,
+                "name": source.name,
+                "domain": source.domain,
+                "title": source.title,
+                "author": source.author,
+            }
+            if source
+            else None
+        ),
+        "tags": sorted(tag.name for tag in highlight.tags),
+    }
+
+
+def serialize_highlight_detail(highlight: Highlight) -> dict[str, Any]:
+    payload = serialize_highlight_summary(highlight)
+    payload.update(
+        {
+            "status": highlight.status.value,
+            "location": highlight.location,
+            "url": highlight.url,
+            "page_title": highlight.page_title,
+            "page_author": highlight.page_author,
+            "updated_at": highlight.updated_at.isoformat(),
+            "collections": [
+                {"id": str(collection.id), "name": collection.name}
+                for collection in highlight.collections
+            ],
+            "reminders": [
+                {"id": str(reminder.id), "remind_at": reminder.remind_at.isoformat()}
+                for reminder in highlight.reminders
+            ],
+        }
+    )
+    return payload
+
+
 @app.get("/", response_class=HTMLResponse)
 def home(request: Request):
     return templates.TemplateResponse("login.html", {"request": request})
@@ -497,15 +583,21 @@ def settings_page(
 def create_device(
     request: Request,
     name: str = Form(),
+    scope: DeviceScope = Form(DeviceScope.ADD_ONLY),
     user: User = Depends(require_user),
     db: Session = Depends(get_db),
 ):
-    api_key = f"phm_live_{secrets.token_urlsafe(32)}"
+    if scope == DeviceScope.WEB:
+        raise HTTPException(status_code=400, detail="Invalid scope")
+
+    prefix = "phm_ro" if scope == DeviceScope.READ_ONLY else "phm_live"
+    api_key = f"{prefix}_{secrets.token_urlsafe(32)}"
     device = Device(
         user_id=user.id,
         name=name,
         api_key_hash=hash_password(api_key),
-        prefix="phm_live",
+        prefix=prefix,
+        scope=scope,
     )
     db.add(device)
     db.commit()
@@ -560,9 +652,10 @@ def roll_device_key(
     if device.name == WEB_DEVICE_NAME:
         raise HTTPException(status_code=400, detail="Web device key cannot be rolled")
 
-    prefix = device.prefix or "phm_live"
+    prefix = "phm_ro" if device.scope == DeviceScope.READ_ONLY else "phm_live"
     api_key = f"{prefix}_{secrets.token_urlsafe(32)}"
     device.api_key_hash = hash_password(api_key)
+    device.prefix = prefix
     device.last_used_at = None
     db.commit()
 
@@ -619,20 +712,17 @@ def delete_device(
 
 @app.post("/api/highlights")
 def api_create_highlight(
+    request: Request,
     text: str = Form(),
     note: Optional[str] = Form(None),
     tags: Optional[str] = Form(None),
     source_url: Optional[str] = Form(None),
     source_title: Optional[str] = Form(None),
     source_author: Optional[str] = Form(None),
-    request: Request = None,
     db: Session = Depends(get_db),
 ):
-    auth_header = request.headers.get("Authorization") if request else None
-    device = get_device_from_auth_header(auth_header, db)
-
-    device.last_used_at = datetime.utcnow()
-    db.commit()
+    auth_header = request.headers.get("Authorization")
+    device = get_device_from_auth_header(auth_header, db, required_scope="write")
 
     # Convert empty strings to None
     source_url = source_url.strip() if source_url else None
@@ -669,9 +759,7 @@ async def api_create_highlight_moon_reader(
     db: Session = Depends(get_db),
 ):
     auth_header = request.headers.get("Authorization")
-    device = get_device_from_auth_header(auth_header, db)
-    device.last_used_at = datetime.utcnow()
-    db.commit()
+    device = get_device_from_auth_header(auth_header, db, required_scope="write")
 
     payload = await request.json()
     highlights = payload.get("highlights") if isinstance(payload, dict) else None
@@ -712,6 +800,92 @@ async def api_create_highlight_moon_reader(
         )
 
     return {"id": str(highlight.id), "created_at": highlight.created_at.isoformat()}
+
+
+@app.get("/api/highlights")
+def api_list_highlights(
+    request: Request,
+    q: Optional[str] = None,
+    favorite: Optional[bool] = None,
+    from_date: Optional[str] = Query(None, alias="from"),
+    to_date: Optional[str] = Query(None, alias="to"),
+    limit: int = API_HIGHLIGHTS_DEFAULT_LIMIT,
+    cursor: Optional[str] = None,
+    db: Session = Depends(get_db),
+):
+    auth_header = request.headers.get("Authorization")
+    device = get_device_from_auth_header(auth_header, db, required_scope="read")
+
+    from_dt = parse_api_datetime(from_date, "from_date")
+    to_dt = parse_api_datetime(to_date, "to_date")
+    cursor_dt = parse_api_datetime(cursor, "cursor")
+    q = q.strip() if q else None
+    limit = max(1, min(limit, API_HIGHLIGHTS_MAX_LIMIT))
+
+    query = (
+        db.query(Highlight)
+        .options(joinedload(Highlight.source), joinedload(Highlight.tags))
+        .outerjoin(Source, Highlight.source_id == Source.id)
+        .filter(Highlight.user_id == device.user_id)
+    )
+
+    if q:
+        search = f"%{q}%"
+        query = query.filter(
+            or_(
+                Highlight.text.ilike(search),
+                Highlight.note.ilike(search),
+                Highlight.page_title.ilike(search),
+                Source.domain.ilike(search),
+                Source.title.ilike(search),
+                Source.author.ilike(search),
+            )
+        )
+    if favorite is not None:
+        query = query.filter(Highlight.is_favorite == favorite)
+    if from_dt:
+        query = query.filter(Highlight.created_at >= from_dt)
+    if to_dt:
+        query = query.filter(Highlight.created_at <= to_dt)
+    if cursor_dt:
+        query = query.filter(Highlight.created_at < cursor_dt)
+
+    highlights = query.order_by(Highlight.created_at.desc()).limit(limit + 1).all()
+    has_more = len(highlights) > limit
+    page = highlights[:limit]
+    next_cursor = page[-1].created_at.isoformat() if has_more and page else None
+
+    return {
+        "items": [serialize_highlight_summary(h) for h in page],
+        "next_cursor": next_cursor,
+        "has_more": has_more,
+    }
+
+
+@app.get("/api/highlights/{highlight_id}")
+def api_get_highlight(
+    highlight_id: str,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    auth_header = request.headers.get("Authorization")
+    device = get_device_from_auth_header(auth_header, db, required_scope="read")
+
+    highlight = (
+        db.query(Highlight)
+        .options(
+            joinedload(Highlight.source),
+            joinedload(Highlight.tags),
+            joinedload(Highlight.collections),
+            joinedload(Highlight.reminders),
+        )
+        .filter(Highlight.id == highlight_id, Highlight.user_id == device.user_id)
+        .first()
+    )
+    if not highlight:
+        raise HTTPException(status_code=404, detail="Highlight not found")
+
+    return serialize_highlight_detail(highlight)
 
 
 @app.get("/highlights/{highlight_id}", response_class=HTMLResponse)

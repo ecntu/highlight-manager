@@ -41,6 +41,32 @@ def migrate_schema():
                 )
             )
 
+    if "devices" in tables:
+        device_columns = {column["name"] for column in inspector.get_columns("devices")}
+        with engine.begin() as conn:
+            if "scope" not in device_columns:
+                conn.execute(
+                    text(
+                        "ALTER TABLE devices ADD COLUMN scope TEXT DEFAULT 'add_only'"
+                    )
+                )
+            conn.execute(
+                text(
+                    "UPDATE devices "
+                    "SET scope = CASE "
+                    "WHEN prefix = 'web' OR name = 'Web' THEN 'web' "
+                    "WHEN scope IN ('add_only', 'read_only', 'web') THEN scope "
+                    "ELSE 'add_only' "
+                    "END"
+                )
+            )
+            conn.execute(
+                text(
+                    "CREATE INDEX IF NOT EXISTS ix_devices_user_scope "
+                    "ON devices (user_id, scope)"
+                )
+            )
+
     if "highlights" in tables:
         highlight_columns = {
             column["name"] for column in inspector.get_columns("highlights")

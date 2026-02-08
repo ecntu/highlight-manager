@@ -22,6 +22,10 @@
             <div style="flex: 1; min-width: 0;">
                 <div style="font-weight: 500; font-size: 14px; color: #1a1a1a; margin-bottom: 4px;">{{ device.name }}</div>
                 <div class="row" style="gap: 12px; font-size: 13px;">
+                    <span class="pill" style="background: #f9fafb; color: #4b5563; border: 1px solid #e5e7eb;">
+                        {% if device.scope.value == "read_only" %}Read only{% elif device.scope.value == "add_only" %}Add only{% else %}Web{% endif %}
+                    </span>
+                    <span class="meta-divider">·</span>
                     <span>Created {{ device.created_at.strftime('%b %d, %Y') }}</span>
                     <span class="meta-divider">·</span>
                     <span class="muted-2">Last used {% if device.last_used_at %}{{ device.last_used_at.strftime('%b %d, %Y') }}{% else %}never{% endif %}</span>

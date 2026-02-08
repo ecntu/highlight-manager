@@ -25,6 +25,6 @@ uv run uvicorn app.main:app --reload
 Visit http://localhost:8000
 
 ## TODOs
-- [ ] test MoonReader sync
-- [ ] resurfacing features (reminders, random, digests)
-- [ ] read-only API keys to export / mcp
+- [ ] resurfacing features (random, digests)
+- [ ] semantic search
+- [ ] hard delete

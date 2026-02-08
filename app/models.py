@@ -35,6 +35,12 @@ class HighlightStatus(str, enum.Enum):
     ARCHIVED = "archived"
 
 
+class DeviceScope(str, enum.Enum):
+    ADD_ONLY = "add_only"
+    READ_ONLY = "read_only"
+    WEB = "web"
+
+
 class User(Base):
     __tablename__ = "users"
 
@@ -62,6 +68,14 @@ class Device(Base):
     name = Column(Text, nullable=False)
     api_key_hash = Column(String(255), unique=True, nullable=False, index=True)
     prefix = Column(String(50), nullable=False)
+    scope = Column(
+        SQLEnum(
+            DeviceScope,
+            values_callable=lambda enum_type: [member.value for member in enum_type],
+        ),
+        nullable=False,
+        default=DeviceScope.ADD_ONLY,
+    )
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     last_used_at = Column(DateTime, nullable=True)
     revoked_at = Column(DateTime, nullable=True)
