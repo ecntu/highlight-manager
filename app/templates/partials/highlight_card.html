@@ -101,10 +101,24 @@
                     </svg>
                 </button>
 
+                <button class="icon-btn" hx-post="/highlights/{{ highlight.id }}/archive"
+                    hx-confirm="{% if highlight.status.value == 'archived' %}Unarchive this highlight?{% else %}Archive this highlight?{% endif %}"
+                    hx-target="#highlight-view" hx-swap="outerHTML"
+                    title="{% if highlight.status.value == 'archived' %}Unarchive{% else %}Archive{% endif %}">
+                    <svg class="icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                            d="M3 7.5A2.25 2.25 0 015.25 5.25h13.5A2.25 2.25 0 0121 7.5v2.25a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 9.75V7.5z" />
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                            d="M5.25 12v6.75A2.25 2.25 0 007.5 21h9a2.25 2.25 0 002.25-2.25V12" />
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 9h6" />
+                    </svg>
+                </button>
+
                 <button class="icon-btn danger" hx-delete="/highlights/{{ highlight.id }}"
-                    hx-confirm="Are you sure you want to delete this highlight?" hx-target="#highlight-view"
+                    hx-confirm="Permanently delete this highlight? This cannot be undone." hx-target="#highlight-view"
                     hx-swap="outerHTML"
-                    title="Delete">
+                    title="Delete permanently">
                     <svg class="icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
                         stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round"
@@ -217,10 +231,24 @@
                         </svg>
                     </button>
 
+                    <button class="icon-btn" hx-post="/highlights/{{ highlight.id }}/archive"
+                        hx-confirm="{% if highlight.status.value == 'archived' %}Unarchive this highlight?{% else %}Archive this highlight?{% endif %}"
+                        hx-target="#highlight-view" hx-swap="outerHTML"
+                        title="{% if highlight.status.value == 'archived' %}Unarchive{% else %}Archive{% endif %}">
+                        <svg class="icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                            stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                d="M3 7.5A2.25 2.25 0 015.25 5.25h13.5A2.25 2.25 0 0121 7.5v2.25a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 9.75V7.5z" />
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                d="M5.25 12v6.75A2.25 2.25 0 007.5 21h9a2.25 2.25 0 002.25-2.25V12" />
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 9h6" />
+                        </svg>
+                    </button>
+
                     <button class="icon-btn danger" hx-delete="/highlights/{{ highlight.id }}"
-                        hx-confirm="Are you sure you want to delete this highlight?" hx-target="#highlight-view"
+                        hx-confirm="Permanently delete this highlight? This cannot be undone." hx-target="#highlight-view"
                         hx-swap="outerHTML"
-                        title="Delete">
+                        title="Delete permanently">
                         <svg class="icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
                             stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round"

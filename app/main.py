@@ -1289,11 +1289,6 @@ def delete_highlight(
 ):
     highlight = (
         db.query(Highlight)
-        .options(
-            joinedload(Highlight.source),
-            joinedload(Highlight.tags),
-            joinedload(Highlight.collections),
-        )
         .filter(Highlight.id == highlight_id, Highlight.user_id == user.id)
         .first()
     )
@@ -1301,6 +1296,41 @@ def delete_highlight(
         raise HTTPException(status_code=404)
 
     source_id = highlight.source_id
+    db.delete(highlight)
+    db.commit()
+
+    if source_id:
+        cleanup_orphaned_sources(user.id, db)
+
+    if is_htmx(request):
+        response = Response(status_code=200)
+        response.headers["HX-Redirect"] = "/highlights"
+        return response
+    return RedirectResponse(url="/highlights", status_code=303)
+
+
+@app.post("/highlights/{highlight_id}/archive")
+def toggle_highlight_archive(
+    highlight_id: str,
+    request: Request,
+    user: User = Depends(require_user),
+    db: Session = Depends(get_db),
+):
+    highlight = (
+        db.query(Highlight)
+        .options(
+            joinedload(Highlight.source),
+            joinedload(Highlight.tags),
+            joinedload(Highlight.collections),
+            joinedload(Highlight.device),
+            joinedload(Highlight.reminders),
+        )
+        .filter(Highlight.id == highlight_id, Highlight.user_id == user.id)
+        .first()
+    )
+    if not highlight:
+        raise HTTPException(status_code=404, detail="Highlight not found")
+
     highlight.status = (
         HighlightStatus.ARCHIVED
         if highlight.status == HighlightStatus.ACTIVE
@@ -1313,16 +1343,12 @@ def delete_highlight(
     db.commit()
     db.refresh(highlight)
 
-    # Cleanup orphaned sources if this was the last highlight
-    if highlight.status == HighlightStatus.ARCHIVED and source_id:
-        cleanup_orphaned_sources(user.id, db)
-
     if is_htmx(request):
-        # For detail page, redirect to highlights list (avoids nested templates)
-        response = Response(status_code=200)
-        response.headers["HX-Redirect"] = "/highlights"
-        return response
-    return RedirectResponse(url="/highlights", status_code=303)
+        return templates.TemplateResponse(
+            "partials/highlight_card.html",
+            {"request": request, "highlight": highlight, "current_user": user},
+        )
+    return RedirectResponse(url=f"/highlights/{highlight_id}", status_code=303)
 
 
 @app.get("/sources", response_class=HTMLResponse)
@@ -1426,6 +1452,52 @@ def update_source_name(
         response.headers["HX-Redirect"] = f"/sources/{source_id}"
         return response
     return RedirectResponse(url=f"/sources/{source_id}", status_code=303)
+
+
+@app.delete("/sources/{source_id}")
+def delete_source(
+    source_id: str,
+    request: Request,
+    cascade: Optional[str] = Form(None),
+    user: User = Depends(require_user),
+    db: Session = Depends(get_db),
+):
+    source = (
+        db.query(Source)
+        .filter(Source.id == source_id, Source.user_id == user.id)
+        .first()
+    )
+    if not source:
+        raise HTTPException(status_code=404, detail="Source not found")
+
+    cascade_delete = (cascade or "").strip().lower() in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }
+    highlights_query = db.query(Highlight).filter(
+        Highlight.user_id == user.id, Highlight.source_id == source_id
+    )
+    if cascade_delete:
+        highlights_query.delete(synchronize_session=False)
+    else:
+        highlights_query.update(
+            {
+                Highlight.source_id: None,
+                Highlight.import_fingerprint: None,
+            },
+            synchronize_session=False,
+        )
+
+    db.delete(source)
+    db.commit()
+
+    if is_htmx(request):
+        response = Response(status_code=200)
+        response.headers["HX-Redirect"] = "/sources"
+        return response
+    return RedirectResponse(url="/sources", status_code=303)
 
 
 # Quick search for nav dropdown

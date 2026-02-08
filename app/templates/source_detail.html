@@ -20,6 +20,14 @@
         padding: 14px;
         background: var(--panel);
     }
+
+    .source-danger-zone {
+        margin-top: 14px;
+        border: 1px solid #fecaca;
+        border-radius: var(--radius-md);
+        background: #fff7f7;
+        padding: 12px;
+    }
 </style>
 <div class="card">
     <div style="margin-bottom: 20px;">
@@ -77,6 +85,27 @@
                     <button type="submit" class="btn btn--ghost btn--sm">Save</button>
                 </div>
             </form>
+
+            <div class="source-danger-zone">
+                <p style="margin: 0 0 8px 0; font-size: 13px; color: #991b1b; font-weight: 600;">Danger zone</p>
+                <p style="margin: 0 0 10px 0; font-size: 12px; color: #7f1d1d;">
+                    Delete this source only, or delete the source and all highlights tied to it.
+                </p>
+                <form hx-delete="/sources/{{ source.id }}" hx-swap="none"
+                    onsubmit="const cascade=this.querySelector('input[name=cascade]').checked; return confirm(cascade ? 'Delete this source and permanently delete all highlights from it?' : 'Delete this source? Highlights will remain but be detached from it.');">
+                    <label class="muted-2"
+                        style="display: inline-flex; align-items: center; gap: 6px; margin: 0 0 10px 0; font-size: 12px; white-space: nowrap;">
+                        <input type="checkbox" name="cascade" value="true">
+                        Delete highlights too
+                    </label>
+                    <div>
+                        <button type="submit" class="btn btn--ghost btn--sm"
+                            style="color: #b91c1c; border-color: #fecaca;">
+                            Delete source
+                        </button>
+                    </div>
+                </form>
+            </div>
         </div>
     </div>
 </div>
