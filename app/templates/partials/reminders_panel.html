@@ -38,9 +38,11 @@
             {% if highlight.reminders %}
             <div class="stack" style="gap: 8px;">
                 {% for reminder in highlight.reminders %}
-                <div id="highlight-reminder-{{ reminder.id }}" class="list-card reminder-card reminder-card--inline-mobile" style="padding: 10px 12px;">
+                <div id="highlight-reminder-{{ reminder.id }}"
+                    class="list-card reminder-card reminder-card--inline-mobile" style="padding: 10px 12px;">
                     <div class="reminder-card-content">
-                        <span class="muted" style="font-size: 13px;">{{ reminder.remind_at.strftime('%b %d, %Y') }}</span>
+                        <span class="muted" style="font-size: 13px;">{{ reminder.remind_at.strftime('%b %d, %Y')
+                            }}</span>
                     </div>
                     <div class="reminder-card-actions">
                         <button hx-delete="/highlights/{{ highlight.id }}/reminders/{{ reminder.id }}"

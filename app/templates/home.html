@@ -37,7 +37,7 @@
     <div class="row-between compact-header" style="margin-bottom: 8px;">
         <h2 class="section-title" style="margin: 0;">Due Reminders</h2>
         <a href="/reminders" style="text-decoration:none;" class="section-meta">View
-            all reminders</a>
+            all</a>
     </div>
     <div class="stack" style="gap: 10px;">
         {% for reminder in due_reminders %}
@@ -58,8 +58,7 @@
                     aria-label="Mark reminder done">
                     <svg class="icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
                         stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M5 13l4 4L19 7" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
                     </svg>
                 </button>
             </div>
@@ -70,7 +69,7 @@
 {% endif %}
 
 <!-- Recent Highlights -->
-<div class="section-header">
+<div class="row-between compact-header" style="margin-bottom: 8px;">
     <h2 class="section-title muted-1">Recent Highlights</h2>
     <small class="section-meta">{{ highlights|length }} total</small>
 </div>
