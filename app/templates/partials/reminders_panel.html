@@ -9,28 +9,30 @@
         </summary>
         <div style="padding: 14px; border-top: 1px solid var(--border);">
             <div style="margin-bottom: 14px;">
-                <form hx-post="/highlights/{{ highlight.id }}/reminders" hx-target="#reminders-panel"
-                    hx-swap="outerHTML">
-                    <input type="hidden" name="keep_open" value="1">
-                    <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; margin-bottom: 10px;">
-                        <button type="submit" class="btn btn--ghost btn--sm" style="padding: 6px 8px; font-size: 12px; white-space: nowrap;"
-                            name="preset" value="tomorrow">Tomorrow</button>
-                        <button type="submit" class="btn btn--ghost btn--sm" style="padding: 6px 8px; font-size: 12px; white-space: nowrap;"
-                            name="preset" value="next_week">Next wk</button>
-                        <button type="submit" class="btn btn--ghost btn--sm" style="padding: 6px 8px; font-size: 12px; white-space: nowrap;"
-                            name="preset" value="next_month">Next mo</button>
-                        <button type="submit" class="btn btn--ghost btn--sm" style="padding: 6px 8px; font-size: 12px; white-space: nowrap;"
-                            name="preset" value="next_year">Next yr</button>
-                    </div>
-                </form>
-                <form hx-post="/highlights/{{ highlight.id }}/reminders" hx-target="#reminders-panel"
-                    hx-swap="outerHTML">
-                    <input type="hidden" name="keep_open" value="1">
-                    <div class="row" style="gap: 8px; align-items: center; flex-wrap: wrap;">
-                        <input type="date" name="remind_on" required style="height: 40px; min-width: 180px; flex: 1;">
-                        <button type="submit" class="btn btn--ghost">Add date</button>
-                    </div>
-                </form>
+                <div class="reminder-controls">
+                    <form hx-post="/highlights/{{ highlight.id }}/reminders" hx-target="#reminders-panel"
+                        hx-swap="outerHTML">
+                        <input type="hidden" name="keep_open" value="1">
+                        <div class="reminder-presets">
+                            <button type="submit" class="btn btn--ghost btn--sm reminder-preset-btn" name="preset"
+                                value="tomorrow">Tomorrow</button>
+                            <button type="submit" class="btn btn--ghost btn--sm reminder-preset-btn" name="preset"
+                                value="next_week">Next wk</button>
+                            <button type="submit" class="btn btn--ghost btn--sm reminder-preset-btn" name="preset"
+                                value="next_month">Next mo</button>
+                            <button type="submit" class="btn btn--ghost btn--sm reminder-preset-btn" name="preset"
+                                value="next_year">Next yr</button>
+                        </div>
+                    </form>
+                    <form hx-post="/highlights/{{ highlight.id }}/reminders" hx-target="#reminders-panel"
+                        hx-swap="outerHTML">
+                        <input type="hidden" name="keep_open" value="1">
+                        <div class="reminder-custom">
+                            <input type="date" name="remind_on" required class="reminder-date-input">
+                            <button type="submit" class="btn btn--ghost btn--sm">Add date</button>
+                        </div>
+                    </form>
+                </div>
             </div>
 
             {% if highlight.reminders %}
@@ -52,8 +54,6 @@
                 </div>
                 {% endfor %}
             </div>
-            {% else %}
-            <p class="muted-2" style="font-size: 13px;">No reminders yet.</p>
             {% endif %}
         </div>
     </details>

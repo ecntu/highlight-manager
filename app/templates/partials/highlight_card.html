@@ -1,7 +1,7 @@
 <div id="highlight-view" class="card" style="padding: 20px 24px; position: relative;">
     <!-- Highlight Text -->
     <div style="margin-bottom: 16px;">
-        <p style="font-size: 18px; line-height: 1.65; color: #111827; margin: 0;">{{ highlight.text }}</p>
+        <p class="highlight-main-text" style="font-size: 18px; line-height: 1.65; color: #111827; margin: 0;">{{ highlight.text }}</p>
     </div>
 
     <!-- Note -->
@@ -173,88 +173,76 @@
     </div>
 
     <details class="highlight-details mobile-only" open>
-        <summary class="details-toggle" aria-label="Toggle details">
-            <svg class="icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"
-                aria-hidden="true">
-                <circle cx="6" cy="12" r="1.5" />
-                <circle cx="12" cy="12" r="1.5" />
-                <circle cx="18" cy="12" r="1.5" />
-            </svg>
-        </summary>
-        <div class="row-between highlight-details-content" style="font-size: 13px; flex-wrap: wrap; margin-bottom: 6px;">
-            <div class="row" style="gap: 6px; flex-wrap: wrap;">
-                {% if highlight.status.value == 'archived' %}
-                <span class="pill pill--danger">Archived</span>
-                {% endif %}
-                {% if highlight.collections %}
-                {% for collection in highlight.collections %}
-                <a href="/collections/{{ collection.id }}"
-                    class="pill pill--amber">
-                    {{ collection.name }}
-                </a>
-                {% endfor %}
-                {% endif %}
-                <button onclick="showAddToCollection()" title="Add to collection" class="pill pill-btn">
-                    <span style="font-size: 13px; line-height: 1;">+</span>
-                    <svg class="icon-xs" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
-                        stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round"
-                            d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-                    </svg>
-                </button>
-                {% if highlight.tags or true %}
-                {% if highlight.tags %}
-                {% for tag in highlight.tags %}
-                <span class="pill pill--blue">
-                    {{ tag.name }}
-                </span>
-                {% endfor %}
-                {% endif %}
-                <button hx-get="/highlights/{{ highlight.id }}/add-tag" hx-target="#tag-modal" hx-swap="innerHTML"
-                    onclick="document.getElementById('tag-modal').style.display='flex'" title="Add tag"
-                    class="pill pill-btn"><span>+</span><span>#</span></button>
-                {% endif %}
-            </div>
+        <summary style="display: none;" aria-hidden="true"></summary>
+        <div class="highlight-details-content">
+            <div class="mobile-compact-details">
+                <div class="mobile-compact-header">
+                    <div class="mobile-compact-topline">
+                        <span class="muted-2">{{ highlight.device.name }}</span>
+                        <span class="muted-2">·</span>
+                        <span class="muted-2">{{ highlight.created_at.strftime('%b %Y') }}</span>
+                        {% if highlight.status.value == 'archived' %}
+                        <span class="pill pill--danger">Archived</span>
+                        {% endif %}
+                    </div>
 
-            <div class="row" style="gap: 10px; white-space: nowrap;">
-                <span class="muted-2">{{ highlight.device.name }}</span>
-                <span class="muted-2">·</span>
-                <span class="muted-2">{{ highlight.created_at.strftime('%b %Y') }}</span>
-                <div class="row" style="gap: 6px;">
-                    <button class="icon-btn" hx-get="/highlights/{{ highlight.id }}/edit" hx-target="#highlight-view"
-                        hx-swap="innerHTML" title="Edit">
-                        <svg class="icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
-                            stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 20h9" />
-                            <path stroke-linecap="round" stroke-linejoin="round"
-                                d="M16.5 3.5a2.121 2.121 0 113 3L7 19l-4 1 1-4 12.5-12.5z" />
-                        </svg>
-                    </button>
+                    <div class="mobile-compact-actions">
+                        <button class="icon-btn mobile-compact-action-btn" hx-get="/highlights/{{ highlight.id }}/edit" hx-target="#highlight-view"
+                            hx-swap="innerHTML" title="Edit">
+                            <svg class="icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+                                stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 20h9" />
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                    d="M16.5 3.5a2.121 2.121 0 113 3L7 19l-4 1 1-4 12.5-12.5z" />
+                            </svg>
+                        </button>
+                        <button class="icon-btn mobile-compact-action-btn" hx-post="/highlights/{{ highlight.id }}/archive"
+                            hx-confirm="{% if highlight.status.value == 'archived' %}Unarchive this highlight?{% else %}Archive this highlight?{% endif %}"
+                            hx-target="#highlight-view" hx-swap="outerHTML"
+                            title="{% if highlight.status.value == 'archived' %}Unarchive{% else %}Archive{% endif %}">
+                            <svg class="icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                                stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                    d="M3 7.5A2.25 2.25 0 015.25 5.25h13.5A2.25 2.25 0 0121 7.5v2.25a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 9.75V7.5z" />
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                    d="M5.25 12v6.75A2.25 2.25 0 007.5 21h9a2.25 2.25 0 002.25-2.25V12" />
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 9h6" />
+                            </svg>
+                        </button>
+                        <button class="icon-btn danger mobile-compact-action-btn mobile-compact-action-btn--danger" hx-delete="/highlights/{{ highlight.id }}"
+                            hx-confirm="Permanently delete this highlight? This cannot be undone." hx-target="#highlight-view"
+                            hx-swap="outerHTML"
+                            title="Delete permanently">
+                            <svg class="icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                                stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                    d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
 
-                    <button class="icon-btn" hx-post="/highlights/{{ highlight.id }}/archive"
-                        hx-confirm="{% if highlight.status.value == 'archived' %}Unarchive this highlight?{% else %}Archive this highlight?{% endif %}"
-                        hx-target="#highlight-view" hx-swap="outerHTML"
-                        title="{% if highlight.status.value == 'archived' %}Unarchive{% else %}Archive{% endif %}">
-                        <svg class="icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
-                            stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round"
-                                d="M3 7.5A2.25 2.25 0 015.25 5.25h13.5A2.25 2.25 0 0121 7.5v2.25a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 9.75V7.5z" />
-                            <path stroke-linecap="round" stroke-linejoin="round"
-                                d="M5.25 12v6.75A2.25 2.25 0 007.5 21h9a2.25 2.25 0 002.25-2.25V12" />
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 9h6" />
-                        </svg>
+                <div class="mobile-compact-pills">
+                    {% if highlight.collections %}
+                    {% for collection in highlight.collections %}
+                    <a href="/collections/{{ collection.id }}" class="pill pill--amber">
+                        {{ collection.name }}
+                    </a>
+                    {% endfor %}
+                    {% endif %}
+                    {% if highlight.tags %}
+                    {% for tag in highlight.tags %}
+                    <span class="pill pill--blue">
+                        {{ tag.name }}
+                    </span>
+                    {% endfor %}
+                    {% endif %}
+                    <button onclick="showAddToCollection()" title="Add to collection" class="pill pill-btn mobile-pill-action">
+                        <span>+</span><span>Col</span>
                     </button>
-
-                    <button class="icon-btn danger" hx-delete="/highlights/{{ highlight.id }}"
-                        hx-confirm="Permanently delete this highlight? This cannot be undone." hx-target="#highlight-view"
-                        hx-swap="outerHTML"
-                        title="Delete permanently">
-                        <svg class="icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
-                            stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round"
-                                d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
-                        </svg>
-                    </button>
+                    <button hx-get="/highlights/{{ highlight.id }}/add-tag" hx-target="#tag-modal" hx-swap="innerHTML"
+                        onclick="document.getElementById('tag-modal').style.display='flex'" title="Add tag"
+                        class="pill pill-btn mobile-pill-action"><span>+</span><span>Tag</span></button>
                 </div>
             </div>
         </div>
@@ -262,10 +250,43 @@
 </div>
 <script>
     (function () {
+        const card = document.querySelector('#highlight-view');
         const details = document.querySelector('#highlight-view .highlight-details');
-        if (!details) return;
-        if (window.matchMedia && window.matchMedia('(max-width: 720px)').matches) {
+        if (!card || !details) return;
+
+        const isMobile = window.matchMedia && window.matchMedia('(max-width: 720px)').matches;
+        if (isMobile) {
             details.removeAttribute('open');
         }
+
+        if (!isMobile) return;
+
+        let pointerDown = null;
+
+        card.addEventListener('pointerdown', function (event) {
+            pointerDown = { x: event.clientX, y: event.clientY };
+        });
+
+        card.addEventListener('click', function (event) {
+            const target = event.target;
+            if (!(target instanceof Element)) return;
+            if (target.closest('a, button, input, textarea, select, label, [role="button"], [hx-get], [hx-post], [hx-put], [hx-delete], [onclick]')) return;
+            if (target.closest('.highlight-details-content')) return;
+
+            const selection = window.getSelection ? window.getSelection() : null;
+            if (selection && !selection.isCollapsed) return;
+
+            if (pointerDown) {
+                const dx = Math.abs(event.clientX - pointerDown.x);
+                const dy = Math.abs(event.clientY - pointerDown.y);
+                if (dx > 6 || dy > 6) return;
+            }
+
+            if (details.open) {
+                details.removeAttribute('open');
+                return;
+            }
+            details.setAttribute('open', '');
+        });
     })();
 </script>

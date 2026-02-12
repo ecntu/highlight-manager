@@ -410,6 +410,47 @@
             width: auto;
         }
 
+        .reminder-presets {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+
+        .reminder-preset-btn {
+            width: auto;
+            justify-content: center;
+            padding: 6px 8px;
+            font-size: 12px;
+            white-space: nowrap;
+        }
+
+        .reminder-controls {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .reminder-custom {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .reminder-date-input {
+            height: 32px;
+            width: 148px;
+            min-width: 0;
+            padding: 0 8px 0 8px;
+            line-height: 32px;
+            font-size: 12px;
+        }
+
+        .reminder-date-input::-webkit-calendar-picker-indicator {
+            margin-left: 2px;
+            padding: 0;
+        }
+
         .input-lg {
             font-size: 15px;
             padding: 10px 14px;
@@ -578,30 +619,59 @@
             cursor: pointer;
         }
 
-        .highlight-details summary {
-            list-style: none;
-            cursor: pointer;
-            color: var(--muted);
-            font-size: 13px;
-            display: none;
-            align-items: center;
+        .mobile-compact-details {
+            width: 100%;
+            display: grid;
+            gap: 6px;
+            border-top: 1px solid #f1f5f9;
+            padding-top: 6px;
+        }
+
+        .mobile-compact-header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
             gap: 8px;
         }
 
-        .highlight-details summary::-webkit-details-marker {
-            display: none;
-        }
-
-        .highlight-details summary .summary-label {
-            display: none;
-        }
-
-        .details-toggle {
-            width: 100%;
+        .mobile-compact-topline {
             display: flex;
-            justify-content: center;
+            flex-wrap: wrap;
             align-items: center;
-            padding: 8px 0 6px;
+            gap: 4px;
+            font-size: 11px;
+            line-height: 1.2;
+            flex: 1;
+            min-width: 0;
+        }
+
+        .mobile-compact-actions {
+            display: flex;
+            gap: 4px;
+            flex: 0 0 auto;
+        }
+
+        .mobile-compact-action-btn {
+            width: 22px;
+            height: 22px;
+            min-width: 22px;
+            border: none;
+            background: none;
+            color: var(--muted);
+        }
+
+        .mobile-compact-pills {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            align-items: center;
+        }
+
+        .mobile-pill-action {
+            min-height: 22px;
+            padding: 3px 9px;
+            font-size: 11px;
+            font-weight: 600;
         }
 
         .desktop-only {
@@ -710,8 +780,34 @@
                 gap: 8px;
             }
 
-            .highlight-details summary {
-                display: flex;
+            .reminder-presets {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: 6px;
+                display: grid;
+            }
+
+            .reminder-preset-btn {
+                width: 100%;
+                min-width: 0;
+                padding: 7px 8px;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+
+            .reminder-controls {
+                display: grid;
+                gap: 8px;
+            }
+
+            .reminder-custom {
+                display: grid;
+                grid-template-columns: 1fr auto;
+                gap: 8px;
+            }
+
+            .reminder-date-input {
+                width: 100%;
+                min-width: 0;
             }
 
             .highlight-meta-primary {
@@ -723,7 +819,7 @@
             }
 
             .highlight-details[open] .highlight-details-content {
-                padding-top: 10px;
+                padding-top: 4px;
             }
 
             .desktop-only {
@@ -741,9 +837,26 @@
 
             .highlight-details-content {
                 width: 100%;
-                flex-direction: column;
-                align-items: flex-start;
-                gap: 12px;
+            }
+
+            #highlight-view.card {
+                padding: 14px 14px !important;
+            }
+
+            .mobile-compact-pills .pill {
+                min-height: 21px;
+                padding: 2px 8px;
+                font-size: 11px;
+            }
+
+            .mobile-compact-action-btn .icon {
+                width: 14px;
+                height: 14px;
+            }
+
+            .highlight-main-text {
+                font-size: 15px !important;
+                line-height: 1.5 !important;
             }
         }
 
