@@ -12,8 +12,8 @@
     {% if reminders %}
     <div class="stack" style="gap: 10px;">
         {% for reminder in reminders %}
-        <div id="reminder-{{ reminder.id }}" class="list-card row-between" style="gap: 12px;">
-            <div style="flex: 1; min-width: 0;">
+        <div id="reminder-{{ reminder.id }}" class="list-card reminder-card">
+            <div class="reminder-card-content">
                 <a href="/highlights/{{ reminder.highlight.id }}" style="color: inherit; text-decoration: none;">
                     <p style="margin: 0 0 4px 0; font-size: 14px;">{{ reminder.highlight.text[:200] }}{% if
                         reminder.highlight.text|length > 200 %}...{% endif %}</p>
@@ -28,16 +28,18 @@
                         {% endif %}
                 </div>
             </div>
-            <button hx-delete="/reminders/{{ reminder.id }}" hx-target="#reminder-{{ reminder.id }}"
-                hx-swap="outerHTML swap:200ms" class="icon-btn"
-                style="width: 28px; height: 28px; color: #9ca3af; border-color: #e5e7eb;" title="Dismiss reminder"
-                aria-label="Dismiss reminder">
-                <svg class="icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
-                    stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M6 18L18 6M6 6l12 12" />
-                </svg>
-            </button>
+            <div class="reminder-card-actions">
+                <button hx-delete="/reminders/{{ reminder.id }}" hx-target="#reminder-{{ reminder.id }}"
+                    hx-swap="outerHTML swap:200ms" class="icon-btn"
+                    style="width: 28px; height: 28px; color: #9ca3af; border-color: #e5e7eb;" title="Mark reminder done"
+                    aria-label="Mark reminder done">
+                    <svg class="icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M5 13l4 4L19 7" />
+                    </svg>
+                </button>
+            </div>
         </div>
         {% endfor %}
     </div>

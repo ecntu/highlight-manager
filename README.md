@@ -27,4 +27,3 @@ Visit http://localhost:8000
 ## TODOs
 - [ ] resurfacing features (random, digests)
 - [ ] semantic search
-- [ ] hard delete
