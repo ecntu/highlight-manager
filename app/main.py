@@ -879,6 +879,12 @@ def api_list_highlights(
     favorite: Optional[bool] = None,
     from_date: Optional[str] = Query(None, alias="from"),
     to_date: Optional[str] = Query(None, alias="to"),
+    sort: Literal[
+        "recent-desc",
+        "recent-asc",
+        "favorite-desc",
+        "favorite-asc",
+    ] = "recent-desc",
     limit: int = API_HIGHLIGHTS_DEFAULT_LIMIT,
     cursor: Optional[str] = None,
     db: Session = Depends(get_db),
@@ -890,20 +896,41 @@ def api_list_highlights(
     to_dt = parse_api_datetime(to_date, "to_date")
     cursor_dt = None
     cursor_id = None
+    cursor_favorite: Optional[bool] = None
     if cursor:
-        # Backward compatible: accept old datetime cursor and new opaque cursor.
-        try:
-            cursor_dt = parse_api_datetime(cursor, "cursor")
-        except HTTPException:
+        # Backward compatible: accept old cursor format for recent-desc.
+        if sort == "recent-desc":
+            try:
+                cursor_dt = parse_api_datetime(cursor, "cursor")
+            except HTTPException:
+                cursor_payload = decode_api_cursor(cursor)
+                cursor_sort = cursor_payload.get("sort")
+                if cursor_sort and cursor_sort != sort:
+                    raise HTTPException(status_code=422, detail="Cursor does not match sort")
+                cursor_created_at = cursor_payload.get("created_at")
+                cursor_id_value = cursor_payload.get("id")
+                if not isinstance(cursor_created_at, str) or not isinstance(
+                    cursor_id_value, str
+                ):
+                    raise HTTPException(status_code=422, detail="Invalid cursor")
+                cursor_dt = parse_api_datetime(cursor_created_at, "cursor")
+                cursor_id = cursor_id_value
+        else:
             cursor_payload = decode_api_cursor(cursor)
+            if cursor_payload.get("sort") != sort:
+                raise HTTPException(status_code=422, detail="Cursor does not match sort")
             cursor_created_at = cursor_payload.get("created_at")
             cursor_id_value = cursor_payload.get("id")
-            if not isinstance(cursor_created_at, str) or not isinstance(
-                cursor_id_value, str
+            cursor_favorite_value = cursor_payload.get("is_favorite")
+            if (
+                not isinstance(cursor_created_at, str)
+                or not isinstance(cursor_id_value, str)
+                or not isinstance(cursor_favorite_value, bool)
             ):
                 raise HTTPException(status_code=422, detail="Invalid cursor")
             cursor_dt = parse_api_datetime(cursor_created_at, "cursor")
             cursor_id = cursor_id_value
+            cursor_favorite = cursor_favorite_value
     q = q.strip() if q else None
     limit = max(1, min(limit, API_HIGHLIGHTS_MAX_LIMIT))
 
@@ -932,26 +959,77 @@ def api_list_highlights(
         query = query.filter(Highlight.created_at >= from_dt)
     if to_dt:
         query = query.filter(Highlight.created_at <= to_dt)
-    if cursor_dt and cursor_id:
+    if cursor_dt and cursor_id and sort == "recent-desc":
         query = query.filter(
             or_(
                 Highlight.created_at < cursor_dt,
                 and_(Highlight.created_at == cursor_dt, Highlight.id < cursor_id),
             )
         )
+    elif cursor_dt and cursor_id and sort == "recent-asc":
+        query = query.filter(
+            or_(
+                Highlight.created_at > cursor_dt,
+                and_(Highlight.created_at == cursor_dt, Highlight.id > cursor_id),
+            )
+        )
+    elif cursor_dt and cursor_id and sort == "favorite-desc" and cursor_favorite is not None:
+        query = query.filter(
+            or_(
+                Highlight.is_favorite < cursor_favorite,
+                and_(
+                    Highlight.is_favorite == cursor_favorite,
+                    Highlight.created_at < cursor_dt,
+                ),
+                and_(
+                    Highlight.is_favorite == cursor_favorite,
+                    Highlight.created_at == cursor_dt,
+                    Highlight.id < cursor_id,
+                ),
+            )
+        )
+    elif cursor_dt and cursor_id and sort == "favorite-asc" and cursor_favorite is not None:
+        query = query.filter(
+            or_(
+                Highlight.is_favorite > cursor_favorite,
+                and_(
+                    Highlight.is_favorite == cursor_favorite,
+                    Highlight.created_at > cursor_dt,
+                ),
+                and_(
+                    Highlight.is_favorite == cursor_favorite,
+                    Highlight.created_at == cursor_dt,
+                    Highlight.id > cursor_id,
+                ),
+            )
+        )
     elif cursor_dt:
         query = query.filter(Highlight.created_at < cursor_dt)
 
-    highlights = (
-        query.order_by(Highlight.created_at.desc(), Highlight.id.desc())
-        .limit(limit + 1)
-        .all()
-    )
+    if sort == "recent-asc":
+        query = query.order_by(Highlight.created_at.asc(), Highlight.id.asc())
+    elif sort == "favorite-desc":
+        query = query.order_by(
+            Highlight.is_favorite.desc(), Highlight.created_at.desc(), Highlight.id.desc()
+        )
+    elif sort == "favorite-asc":
+        query = query.order_by(
+            Highlight.is_favorite.asc(), Highlight.created_at.asc(), Highlight.id.asc()
+        )
+    else:  # recent-desc
+        query = query.order_by(Highlight.created_at.desc(), Highlight.id.desc())
+
+    highlights = query.limit(limit + 1).all()
     has_more = len(highlights) > limit
     page = highlights[:limit]
     next_cursor = (
         encode_api_cursor(
-            {"created_at": page[-1].created_at.isoformat(), "id": str(page[-1].id)}
+            {
+                "sort": sort,
+                "created_at": page[-1].created_at.isoformat(),
+                "id": str(page[-1].id),
+                "is_favorite": bool(page[-1].is_favorite),
+            }
         )
         if has_more and page
         else None
