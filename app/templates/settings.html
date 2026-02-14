@@ -58,6 +58,15 @@ curl -X POST {{ request.url.scheme }}://{{ request.url.netloc }}/api/highlights 
 # Read-only keys can fetch highlights:
 curl "{{ request.url.scheme }}://{{ request.url.netloc }}/api/highlights?limit=20" \
   -H "Authorization: Bearer YOUR_READ_ONLY_KEY"</pre>
+
+        <p style="color: #6b7280; margin-top: 14px; font-size: 14px;">
+            API docs:
+            <a href="/docs" target="_blank" rel="noopener noreferrer">Swagger UI</a>
+            ·
+            <a href="/redoc" target="_blank" rel="noopener noreferrer">ReDoc</a>
+            ·
+            <a href="/openapi.json" target="_blank" rel="noopener noreferrer">OpenAPI JSON</a>
+        </p>
     </div>
 </div>
 {% endblock %}

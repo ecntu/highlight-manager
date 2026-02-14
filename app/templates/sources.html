@@ -6,55 +6,52 @@
 <div>
     <div class="row-between" style="margin-bottom: 24px;">
         <h2 class="section-title" style="margin: 0;">Sources</h2>
-
-        <!-- Filters -->
-        <div class="row" style="gap: 12px;">
-            <select id="type-filter" class="select-compact">
-                <option value="">All Types</option>
-                <option value="book">Books</option>
-                <option value="web">Web</option>
-                <option value="article">Articles</option>
-                <option value="podcast">Podcasts</option>
-            </select>
-
-            <select id="favorites-filter" class="select-compact">
-                <option value="">All Sources</option>
-                <option value="favorites">Has Favorites</option>
-            </select>
-
-            <select id="sort-by" class="select-compact">
-                <option value="recent-desc">Recent First</option>
-                <option value="recent-asc">Oldest First</option>
-                <option value="highlights-desc">Most Highlights</option>
-                <option value="highlights-asc">Least Highlights</option>
-                <option value="favorites-desc">Most Favorites</option>
-                <option value="favorites-asc">Least Favorites</option>
-            </select>
-        </div>
     </div>
 
+    <form id="sources-filter-form" method="get" action="/sources" class="card" style="margin-bottom: 16px; padding: 14px;">
+        <div class="row" style="gap: 10px; flex-wrap: wrap;">
+            <input type="text" name="q" value="{{ q }}" placeholder="Search name, domain, title, author"
+                style="flex: 1 1 240px; min-width: 0; width: 100%;">
+            <select name="type" class="select-compact" onchange="this.form.requestSubmit()">
+                <option value="">All types</option>
+                <option value="book" {% if source_type=='book' %}selected{% endif %}>Book</option>
+                <option value="web" {% if source_type=='web' %}selected{% endif %}>Web</option>
+            </select>
+            <select name="sort" class="select-compact" onchange="this.form.requestSubmit()">
+                <option value="recent-desc" {% if sort=='recent-desc' %}selected{% endif %}>Recent (Newest)</option>
+                <option value="recent-asc" {% if sort=='recent-asc' %}selected{% endif %}>Recent (Oldest)</option>
+                <option value="highlights-desc" {% if sort=='highlights-desc' %}selected{% endif %}>Highlights (High to Low)</option>
+                <option value="highlights-asc" {% if sort=='highlights-asc' %}selected{% endif %}>Highlights (Low to High)</option>
+                <option value="favorites-desc" {% if sort=='favorites-desc' %}selected{% endif %}>Favorites (High to Low)</option>
+                <option value="favorites-asc" {% if sort=='favorites-asc' %}selected{% endif %}>Favorites (Low to High)</option>
+                <option value="name-asc" {% if sort=='name-asc' %}selected{% endif %}>Name (A to Z)</option>
+                <option value="name-desc" {% if sort=='name-desc' %}selected{% endif %}>Name (Z to A)</option>
+            </select>
+            <a href="/sources" class="btn btn--ghost btn--sm" style="text-decoration: none;">Reset</a>
+        </div>
+    </form>
+
     {% if sources %}
-    <div id="sources-list" class="stack">
+    <div class="stack">
         {% for source in sources %}
-        <div class="list-card clickable" data-type="{{ source.type.value }}"
-            data-highlights="{{ source.highlights|length }}"
-            data-favorites="{{ source.highlights|selectattr('is_favorite')|list|length }}"
-            onclick="window.location='/sources/{{ source.id }}'">
+        <div class="list-card clickable" onclick="window.location='/sources/{{ source.id }}'">
             <div class="row-between" style="align-items: start;">
                 <div style="flex: 1; min-width: 0;">
-                    <h3 style="font-size: 15px; margin-bottom: 6px; font-weight: 600;">{{ source.name }}</h3>
+                    <h3 style="font-size: 15px; margin-bottom: 6px; font-weight: 600;">{{ source.source_name }}</h3>
                     {% if source.author %}
                     <p class="muted" style="font-size: 13px; margin-bottom: 8px;">{{ source.author }}</p>
                     {% endif %}
                     <div class="row" style="gap: 12px; font-size: 13px;">
                         <span class="muted-2" style="text-transform: capitalize;">{{ source.type.value }}</span>
                         <span class="meta-divider">·</span>
-                        <span class="muted-2">{{ source.highlights|length }} highlight{% if source.highlights|length !=
-                            1 %}s{% endif %}</span>
-                        {% set favorite_count = source.highlights|selectattr('is_favorite')|list|length %}
-                        {% if favorite_count > 0 %}
+                        <span class="muted-2">{{ source.highlight_count }} highlight{% if source.highlight_count != 1 %}s{% endif %}</span>
+                        {% if source.favorite_highlight_count > 0 %}
                         <span class="meta-divider">·</span>
-                        <span class="muted">♥ {{ favorite_count }}</span>
+                        <span class="muted">♥ {{ source.favorite_highlight_count }}</span>
+                        {% endif %}
+                        {% if source.last_highlight_at %}
+                        <span class="meta-divider">·</span>
+                        <span class="muted-2">{{ source.last_highlight_at.strftime('%b %d, %Y') }}</span>
                         {% endif %}
                     </div>
                 </div>
@@ -67,77 +64,19 @@
         information to see them here.</p>
     {% endif %}
 </div>
-
 <script>
-    document.addEventListener('DOMContentLoaded', function () {
-        const typeFilter = document.getElementById('type-filter');
-        const favoritesFilter = document.getElementById('favorites-filter');
-        const sortBy = document.getElementById('sort-by');
-        const sourcesList = document.getElementById('sources-list');
-
-        if (!sourcesList) return;
-
-        // Store original order for recent sorting
-        const originalOrder = Array.from(sourcesList.children).map((item, index) => ({ item, index }));
-
-        function applyFiltersAndSort() {
-            const items = Array.from(sourcesList.children);
-            const typeValue = typeFilter.value;
-            const favoritesValue = favoritesFilter.value;
-            const sortValue = sortBy.value;
-
-            // Filter
-            items.forEach(item => {
-                let show = true;
-
-                if (typeValue && item.dataset.type !== typeValue) {
-                    show = false;
-                }
-
-                if (favoritesValue === 'favorites' && parseInt(item.dataset.favorites || 0) === 0) {
-                    show = false;
-                }
-
-                item.style.display = show ? '' : 'none';
-            });
-
-            // Get visible items for sorting
-            const visibleItems = items.filter(item => item.style.display !== 'none');
-
-            // Sort
-            visibleItems.sort((a, b) => {
-                const [field, order] = sortValue.split('-');
-                let aVal, bVal;
-
-                if (field === 'highlights') {
-                    aVal = parseInt(a.dataset.highlights || 0);
-                    bVal = parseInt(b.dataset.highlights || 0);
-                } else if (field === 'favorites') {
-                    aVal = parseInt(a.dataset.favorites || 0);
-                    bVal = parseInt(b.dataset.favorites || 0);
-                } else if (field === 'recent') {
-                    // Use original DOM position
-                    const aOriginal = originalOrder.find(o => o.item === a);
-                    const bOriginal = originalOrder.find(o => o.item === b);
-                    aVal = aOriginal ? aOriginal.index : 0;
-                    bVal = bOriginal ? bOriginal.index : 0;
-                    return order === 'desc' ? aVal - bVal : bVal - aVal;
-                }
-
-                return order === 'desc' ? bVal - aVal : aVal - bVal;
-            });
-
-            // Clear and reorder
-            sourcesList.innerHTML = '';
-            visibleItems.forEach(item => sourcesList.appendChild(item));
-
-            // Add back hidden items at the end
-            items.filter(item => item.style.display === 'none').forEach(item => sourcesList.appendChild(item));
-        }
-
-        if (typeFilter) typeFilter.addEventListener('change', applyFiltersAndSort);
-        if (favoritesFilter) favoritesFilter.addEventListener('change', applyFiltersAndSort);
-        if (sortBy) sortBy.addEventListener('change', applyFiltersAndSort);
-    });
+    (function () {
+        const form = document.getElementById('sources-filter-form');
+        if (!form) return;
+        const searchInput = form.querySelector('input[name="q"]');
+        if (!searchInput) return;
+        let timerId = null;
+        searchInput.addEventListener('input', function () {
+            if (timerId) clearTimeout(timerId);
+            timerId = setTimeout(function () {
+                form.requestSubmit();
+            }, 300);
+        });
+    })();
 </script>
 {% endblock %}

@@ -4,12 +4,14 @@ from fastapi.exception_handlers import http_exception_handler
 from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
 from sqlalchemy.orm import Session, joinedload
-from sqlalchemy import or_, func
+from sqlalchemy import or_, and_, func, case
 from datetime import datetime, timedelta, timezone
 from calendar import monthrange
 from urllib.parse import urlparse
 import secrets
 import re
+import json
+import base64
 from typing import Optional, Any, Literal
 from app.database import get_db, init_db_schema
 from app.models import (
@@ -115,8 +117,10 @@ WEB_DEVICE_NAME = "Web"
 WEB_DEVICE_PREFIX = "web"
 SOURCE_HIGHLIGHTS_PREVIEW_LIMIT = 25
 HOME_DUE_REMINDERS_LIMIT = 10
-API_HIGHLIGHTS_DEFAULT_LIMIT = 20
-API_HIGHLIGHTS_MAX_LIMIT = 100
+API_HIGHLIGHTS_DEFAULT_LIMIT = 50
+API_HIGHLIGHTS_MAX_LIMIT = 200
+API_SOURCES_DEFAULT_LIMIT = 50
+API_SOURCES_MAX_LIMIT = 200
 
 
 def get_device_from_auth_header(
@@ -406,6 +410,22 @@ def parse_api_datetime(raw: Optional[str], field_name: str) -> Optional[datetime
         ) from exc
 
 
+def encode_api_cursor(payload: dict[str, Any]) -> str:
+    raw = json.dumps(payload, separators=(",", ":"), sort_keys=True).encode("utf-8")
+    return base64.urlsafe_b64encode(raw).decode("utf-8")
+
+
+def decode_api_cursor(cursor: str) -> dict[str, Any]:
+    try:
+        raw = base64.urlsafe_b64decode(cursor.encode("utf-8"))
+        payload = json.loads(raw.decode("utf-8"))
+    except Exception as exc:
+        raise HTTPException(status_code=422, detail="Invalid cursor") from exc
+    if not isinstance(payload, dict):
+        raise HTTPException(status_code=422, detail="Invalid cursor")
+    return payload
+
+
 def serialize_highlight_summary(highlight: Highlight) -> dict[str, Any]:
     source = highlight.source
     return {
@@ -454,6 +474,24 @@ def serialize_highlight_detail(highlight: Highlight) -> dict[str, Any]:
         }
     )
     return payload
+
+
+def serialize_source_summary(
+    source_id: str,
+    source_type: SourceType,
+    name: str,
+    domain: Optional[str],
+    title: Optional[str],
+    author: Optional[str],
+) -> dict[str, Any]:
+    return {
+        "id": source_id,
+        "type": source_type.value,
+        "name": name,
+        "domain": domain,
+        "title": title,
+        "author": author,
+    }
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -850,7 +888,22 @@ def api_list_highlights(
 
     from_dt = parse_api_datetime(from_date, "from_date")
     to_dt = parse_api_datetime(to_date, "to_date")
-    cursor_dt = parse_api_datetime(cursor, "cursor")
+    cursor_dt = None
+    cursor_id = None
+    if cursor:
+        # Backward compatible: accept old datetime cursor and new opaque cursor.
+        try:
+            cursor_dt = parse_api_datetime(cursor, "cursor")
+        except HTTPException:
+            cursor_payload = decode_api_cursor(cursor)
+            cursor_created_at = cursor_payload.get("created_at")
+            cursor_id_value = cursor_payload.get("id")
+            if not isinstance(cursor_created_at, str) or not isinstance(
+                cursor_id_value, str
+            ):
+                raise HTTPException(status_code=422, detail="Invalid cursor")
+            cursor_dt = parse_api_datetime(cursor_created_at, "cursor")
+            cursor_id = cursor_id_value
     q = q.strip() if q else None
     limit = max(1, min(limit, API_HIGHLIGHTS_MAX_LIMIT))
 
@@ -879,16 +932,221 @@ def api_list_highlights(
         query = query.filter(Highlight.created_at >= from_dt)
     if to_dt:
         query = query.filter(Highlight.created_at <= to_dt)
-    if cursor_dt:
+    if cursor_dt and cursor_id:
+        query = query.filter(
+            or_(
+                Highlight.created_at < cursor_dt,
+                and_(Highlight.created_at == cursor_dt, Highlight.id < cursor_id),
+            )
+        )
+    elif cursor_dt:
         query = query.filter(Highlight.created_at < cursor_dt)
 
-    highlights = query.order_by(Highlight.created_at.desc()).limit(limit + 1).all()
+    highlights = (
+        query.order_by(Highlight.created_at.desc(), Highlight.id.desc())
+        .limit(limit + 1)
+        .all()
+    )
     has_more = len(highlights) > limit
     page = highlights[:limit]
-    next_cursor = page[-1].created_at.isoformat() if has_more and page else None
+    next_cursor = (
+        encode_api_cursor(
+            {"created_at": page[-1].created_at.isoformat(), "id": str(page[-1].id)}
+        )
+        if has_more and page
+        else None
+    )
 
     return {
         "items": [serialize_highlight_summary(h) for h in page],
+        "next_cursor": next_cursor,
+        "has_more": has_more,
+    }
+
+
+@app.get("/api/sources")
+def api_search_sources(
+    request: Request,
+    q: Optional[str] = None,
+    source_type: Optional[str] = Query(None, alias="type"),
+    order_by: Literal["recent", "highlights", "favorites", "name"] = "recent",
+    order_dir: Optional[Literal["asc", "desc"]] = None,
+    cursor: Optional[str] = None,
+    limit: int = API_SOURCES_DEFAULT_LIMIT,
+    db: Session = Depends(get_db),
+):
+    auth_header = request.headers.get("Authorization")
+    device = get_device_from_auth_header(auth_header, db, required_scope="read")
+    q = q.strip() if q else None
+    limit = max(1, min(limit, API_SOURCES_MAX_LIMIT))
+
+    if source_type:
+        source_type = source_type.strip().lower()
+        if source_type not in {SourceType.BOOK.value, SourceType.WEB.value}:
+            raise HTTPException(status_code=422, detail="Invalid source type")
+
+    source_name = func.coalesce(
+        Source.display_name, Source.original_name, Source.title, Source.domain, ""
+    )
+    highlight_count = func.count(Highlight.id)
+    active_highlight_count = func.sum(
+        case((Highlight.status == HighlightStatus.ACTIVE, 1), else_=0)
+    )
+    favorite_highlight_count = func.sum(
+        case((Highlight.is_favorite.is_(True), 1), else_=0)
+    )
+    last_highlight_at = func.max(Highlight.created_at)
+    recent_marker = func.coalesce(last_highlight_at, Source.created_at)
+
+    query = (
+        db.query(
+            Source.id,
+            Source.type,
+            source_name.label("source_name"),
+            Source.domain,
+            Source.title,
+            Source.author,
+            highlight_count.label("highlight_count"),
+            active_highlight_count.label("active_highlight_count"),
+            favorite_highlight_count.label("favorite_highlight_count"),
+            last_highlight_at.label("last_highlight_at"),
+            Source.created_at.label("source_created_at"),
+        )
+        .outerjoin(
+            Highlight,
+            (Highlight.source_id == Source.id) & (Highlight.user_id == device.user_id),
+        )
+        .filter(Source.user_id == device.user_id)
+    )
+
+    if q:
+        search = f"%{q}%"
+        query = query.filter(
+            or_(
+                Source.display_name.ilike(search),
+                Source.original_name.ilike(search),
+                Source.domain.ilike(search),
+                Source.title.ilike(search),
+                Source.author.ilike(search),
+            )
+        )
+    if source_type:
+        query = query.filter(Source.type == SourceType(source_type))
+
+    query = query.group_by(
+        Source.id,
+        Source.type,
+        Source.display_name,
+        Source.original_name,
+        Source.title,
+        Source.domain,
+        Source.author,
+        Source.created_at,
+    )
+
+    if order_dir is None:
+        order_dir = "asc" if order_by == "name" else "desc"
+
+    order_expr = {
+        "recent": recent_marker,
+        "highlights": highlight_count,
+        "favorites": favorite_highlight_count,
+        "name": source_name,
+    }[order_by]
+
+    cursor_sort_value: Optional[datetime | int | str] = None
+    cursor_id: Optional[str] = None
+    if cursor:
+        payload = decode_api_cursor(cursor)
+        if payload.get("order_by") != order_by or payload.get("order_dir") != order_dir:
+            raise HTTPException(status_code=422, detail="Cursor does not match sort")
+        cursor_id_value = payload.get("id")
+        cursor_value = payload.get("value")
+        if not isinstance(cursor_id_value, str):
+            raise HTTPException(status_code=422, detail="Invalid cursor")
+        cursor_id = cursor_id_value
+        if order_by == "recent":
+            if not isinstance(cursor_value, str):
+                raise HTTPException(status_code=422, detail="Invalid cursor")
+            cursor_sort_value = parse_api_datetime(cursor_value, "cursor")
+        elif order_by in {"highlights", "favorites"}:
+            if not isinstance(cursor_value, int):
+                raise HTTPException(status_code=422, detail="Invalid cursor")
+            cursor_sort_value = cursor_value
+        else:  # name
+            if not isinstance(cursor_value, str):
+                raise HTTPException(status_code=422, detail="Invalid cursor")
+            cursor_sort_value = cursor_value
+
+    if cursor_sort_value is not None and cursor_id:
+        if order_dir == "asc":
+            query = query.having(
+                or_(
+                    order_expr > cursor_sort_value,
+                    and_(order_expr == cursor_sort_value, Source.id > cursor_id),
+                )
+            )
+        else:
+            query = query.having(
+                or_(
+                    order_expr < cursor_sort_value,
+                    and_(order_expr == cursor_sort_value, Source.id < cursor_id),
+                )
+            )
+
+    if order_dir == "asc":
+        query = query.order_by(order_expr.asc(), Source.id.asc())
+    else:
+        query = query.order_by(order_expr.desc(), Source.id.desc())
+    query = query.limit(limit + 1)
+
+    rows = query.all()
+    has_more = len(rows) > limit
+    page = rows[:limit]
+
+    next_cursor = None
+    if has_more and page:
+        last = page[-1]
+        if order_by == "recent":
+            cursor_value = (
+                last.last_highlight_at or last.source_created_at
+            ).isoformat()
+        elif order_by == "highlights":
+            cursor_value = last.highlight_count
+        elif order_by == "favorites":
+            cursor_value = last.favorite_highlight_count or 0
+        else:
+            cursor_value = last.source_name
+        next_cursor = encode_api_cursor(
+            {
+                "order_by": order_by,
+                "order_dir": order_dir,
+                "value": cursor_value,
+                "id": str(last.id),
+            }
+        )
+
+    return {
+        "items": [
+            {
+                "source": serialize_source_summary(
+                    source_id=str(row.id),
+                    source_type=row.type,
+                    name=row.source_name,
+                    domain=row.domain,
+                    title=row.title,
+                    author=row.author,
+                ),
+                "highlight_count": row.highlight_count,
+                "active_highlight_count": row.active_highlight_count or 0,
+                "favorite_highlight_count": row.favorite_highlight_count or 0,
+                "last_highlight_at": (
+                    row.last_highlight_at.isoformat() if row.last_highlight_at else None
+                ),
+                "source_created_at": row.source_created_at.isoformat(),
+            }
+            for row in page
+        ],
         "next_cursor": next_cursor,
         "has_more": has_more,
     }
@@ -1386,22 +1644,120 @@ def toggle_highlight_archive(
 @app.get("/sources", response_class=HTMLResponse)
 def sources_page(
     request: Request,
+    q: Optional[str] = None,
+    source_type: Optional[str] = Query(None, alias="type"),
+    sort: Optional[str] = None,
+    order_by: Literal["recent", "highlights", "favorites", "name"] = "recent",
+    order_dir: Optional[Literal["asc", "desc"]] = None,
     user: User = Depends(require_user),
     db: Session = Depends(get_db),
 ):
-    sources = (
-        db.query(Source)
+    q = q.strip() if q else None
+    if source_type:
+        source_type = source_type.strip().lower()
+        if source_type not in {SourceType.BOOK.value, SourceType.WEB.value}:
+            raise HTTPException(status_code=422, detail="Invalid source type")
+    allowed_sorts = {
+        "recent-desc",
+        "recent-asc",
+        "highlights-desc",
+        "highlights-asc",
+        "favorites-desc",
+        "favorites-asc",
+        "name-asc",
+        "name-desc",
+    }
+    if sort:
+        sort_value = sort.strip().lower()
+        if sort_value not in allowed_sorts:
+            raise HTTPException(status_code=422, detail="Invalid sort option")
+        order_by, order_dir = sort_value.split("-", 1)
+
+    if order_dir is None:
+        order_dir = "asc" if order_by == "name" else "desc"
+
+    source_name = func.coalesce(
+        Source.display_name, Source.original_name, Source.title, Source.domain, ""
+    )
+    highlight_count = func.count(Highlight.id)
+    active_highlight_count = func.sum(
+        case((Highlight.status == HighlightStatus.ACTIVE, 1), else_=0)
+    )
+    favorite_highlight_count = func.sum(
+        case((Highlight.is_favorite.is_(True), 1), else_=0)
+    )
+    last_highlight_at = func.max(Highlight.created_at)
+    recent_marker = func.coalesce(last_highlight_at, Source.created_at)
+
+    query = (
+        db.query(
+            Source.id,
+            Source.type,
+            source_name.label("source_name"),
+            Source.domain,
+            Source.title,
+            Source.author,
+            highlight_count.label("highlight_count"),
+            active_highlight_count.label("active_highlight_count"),
+            favorite_highlight_count.label("favorite_highlight_count"),
+            last_highlight_at.label("last_highlight_at"),
+        )
+        .outerjoin(
+            Highlight,
+            (Highlight.source_id == Source.id) & (Highlight.user_id == user.id),
+        )
         .filter(Source.user_id == user.id)
-        .order_by(
-            func.coalesce(
-                Source.display_name, Source.original_name, Source.title, Source.domain
+    )
+
+    if q:
+        search = f"%{q}%"
+        query = query.filter(
+            or_(
+                Source.display_name.ilike(search),
+                Source.original_name.ilike(search),
+                Source.domain.ilike(search),
+                Source.title.ilike(search),
+                Source.author.ilike(search),
             )
         )
-        .all()
+    if source_type:
+        query = query.filter(Source.type == SourceType(source_type))
+
+    query = query.group_by(
+        Source.id,
+        Source.type,
+        Source.display_name,
+        Source.original_name,
+        Source.title,
+        Source.domain,
+        Source.author,
+        Source.created_at,
     )
+
+    order_expr = {
+        "recent": recent_marker,
+        "highlights": highlight_count,
+        "favorites": favorite_highlight_count,
+        "name": source_name,
+    }[order_by]
+    if order_dir == "asc":
+        query = query.order_by(order_expr.asc(), source_name.asc())
+    else:
+        query = query.order_by(order_expr.desc(), source_name.asc())
+
+    sources = query.all()
     return templates.TemplateResponse(
         "sources.html",
-        {"request": request, "sources": sources, "current_user": user},
+        {
+            "request": request,
+            "sources": sources,
+            "current_user": user,
+            "q": q or "",
+            "source_type": source_type or "",
+            "order_by": order_by,
+            "order_dir": order_dir,
+            "sort": f"{order_by}-{order_dir}",
+        },
     )
 
 
