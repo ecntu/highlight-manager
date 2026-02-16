@@ -140,7 +140,7 @@
             </div>
             {% endif %}
             <div class="row" style="gap: 15px;">
-                <small class="muted">{{ highlight.created_at.strftime('%b %d, %Y') }}</small>
+                <small class="muted">{{ (highlight.highlighted_at or highlight.created_at).strftime('%b %d, %Y') }}</small>
                 {% if highlight.tags %}
                 <small class="muted-2">
                     {% for tag in highlight.tags %}

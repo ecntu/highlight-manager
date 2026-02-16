@@ -68,7 +68,7 @@
         <div class="row" style="gap: 10px; white-space: nowrap;">
             <span class="muted-2">{{ highlight.device.name }}</span>
             <span class="muted-2">·</span>
-            <span class="muted-2">{{ highlight.created_at.strftime('%b %Y') }}</span>
+            <span class="muted-2">{{ (highlight.highlighted_at or highlight.created_at).strftime('%b %Y') }}</span>
             <div class="row" style="gap: 6px;">
                 <button class="icon-btn fav-toggle" data-fav="{{ 'true' if highlight.is_favorite else 'false' }}"
                     hx-put="/highlights/{{ highlight.id }}/favorite" hx-target="this" hx-swap="innerHTML"
@@ -180,7 +180,7 @@
                     <div class="mobile-compact-topline">
                         <span class="muted-2">{{ highlight.device.name }}</span>
                         <span class="muted-2">·</span>
-                        <span class="muted-2">{{ highlight.created_at.strftime('%b %Y') }}</span>
+                        <span class="muted-2">{{ (highlight.highlighted_at or highlight.created_at).strftime('%b %Y') }}</span>
                         {% if highlight.status.value == 'archived' %}
                         <span class="pill pill--danger">Archived</span>
                         {% endif %}

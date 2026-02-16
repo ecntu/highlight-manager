@@ -57,7 +57,7 @@
 
             <!-- Date & Favorite -->
             <div class="row" style="gap: 10px; white-space: nowrap;">
-                <span class="muted-2">{{ highlight.created_at.strftime('%b %Y') }}</span>
+                <span class="muted-2">{{ (highlight.highlighted_at or highlight.created_at).strftime('%b %Y') }}</span>
                 <button id="fav-btn-{{ highlight.id }}" class="icon-btn fav-toggle" data-fav="{{ 'true' if highlight.is_favorite else 'false' }}"
                     hx-put="/highlights/{{ highlight.id }}/favorite"
                     hx-target="#fav-icon-{{ highlight.id }}" hx-swap="innerHTML swap:0.1s"
