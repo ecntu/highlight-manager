@@ -328,6 +328,7 @@ def create_highlight_with_metadata(
     db: Session,
     dedupe_on_import: bool = False,
     location: Optional[dict[str, Any]] = None,
+    highlighted_at: Optional[datetime] = None,
 ) -> tuple[Highlight, bool]:
     source, url, page_title, page_author = get_or_create_source(
         user_id=user_id,
@@ -369,6 +370,7 @@ def create_highlight_with_metadata(
         original_text=text,
         original_note=note,
         import_fingerprint=fingerprint,
+        highlighted_at=highlighted_at,
     )
     db.add(highlight)
     db.flush()
@@ -848,6 +850,10 @@ async def api_create_highlight_moon_reader(
     source_title = (data.get("title") or "").strip() or None
     source_author = (data.get("author") or "").strip() or None
     chapter = (data.get("chapter") or "").strip() or None
+    raw_time = data.get("time")
+    highlighted_at = (
+        datetime.fromtimestamp(raw_time / 1000) if raw_time else None
+    )
 
     highlight, created = create_highlight_with_metadata(
         user_id=device.user_id,
@@ -861,6 +867,7 @@ async def api_create_highlight_moon_reader(
         db=db,
         dedupe_on_import=True,
         location={"chapter": chapter} if chapter else None,
+        highlighted_at=highlighted_at,
     )
 
     if not created:
