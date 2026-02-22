@@ -417,6 +417,15 @@ def encode_api_cursor(payload: dict[str, Any]) -> str:
     return base64.urlsafe_b64encode(raw).decode("utf-8")
 
 
+def _effective_date(highlight_or_cls=None):
+    """COALESCE(highlighted_at, created_at) — usable as a column expression or on an instance."""
+    if highlight_or_cls is None:
+        highlight_or_cls = Highlight
+    if isinstance(highlight_or_cls, Highlight):
+        return highlight_or_cls.highlighted_at or highlight_or_cls.created_at
+    return func.coalesce(highlight_or_cls.highlighted_at, highlight_or_cls.created_at)
+
+
 def decode_api_cursor(cursor: str) -> dict[str, Any]:
     try:
         raw = base64.urlsafe_b64decode(cursor.encode("utf-8"))
@@ -566,7 +575,7 @@ def list_highlights(
     highlights = (
         db.query(Highlight)
         .filter(Highlight.user_id == user.id)
-        .order_by(Highlight.created_at.desc())
+        .order_by(_effective_date().desc())
         .limit(20)
         .all()
     )
@@ -962,22 +971,23 @@ def api_list_highlights(
         )
     if favorite is not None:
         query = query.filter(Highlight.is_favorite == favorite)
+    effective_dt = _effective_date()
     if from_dt:
-        query = query.filter(Highlight.created_at >= from_dt)
+        query = query.filter(effective_dt >= from_dt)
     if to_dt:
-        query = query.filter(Highlight.created_at <= to_dt)
+        query = query.filter(effective_dt <= to_dt)
     if cursor_dt and cursor_id and sort == "recent-desc":
         query = query.filter(
             or_(
-                Highlight.created_at < cursor_dt,
-                and_(Highlight.created_at == cursor_dt, Highlight.id < cursor_id),
+                effective_dt < cursor_dt,
+                and_(effective_dt == cursor_dt, Highlight.id < cursor_id),
             )
         )
     elif cursor_dt and cursor_id and sort == "recent-asc":
         query = query.filter(
             or_(
-                Highlight.created_at > cursor_dt,
-                and_(Highlight.created_at == cursor_dt, Highlight.id > cursor_id),
+                effective_dt > cursor_dt,
+                and_(effective_dt == cursor_dt, Highlight.id > cursor_id),
             )
         )
     elif cursor_dt and cursor_id and sort == "favorite-desc" and cursor_favorite is not None:
@@ -986,11 +996,11 @@ def api_list_highlights(
                 Highlight.is_favorite < cursor_favorite,
                 and_(
                     Highlight.is_favorite == cursor_favorite,
-                    Highlight.created_at < cursor_dt,
+                    effective_dt < cursor_dt,
                 ),
                 and_(
                     Highlight.is_favorite == cursor_favorite,
-                    Highlight.created_at == cursor_dt,
+                    effective_dt == cursor_dt,
                     Highlight.id < cursor_id,
                 ),
             )
@@ -1001,30 +1011,30 @@ def api_list_highlights(
                 Highlight.is_favorite > cursor_favorite,
                 and_(
                     Highlight.is_favorite == cursor_favorite,
-                    Highlight.created_at > cursor_dt,
+                    effective_dt > cursor_dt,
                 ),
                 and_(
                     Highlight.is_favorite == cursor_favorite,
-                    Highlight.created_at == cursor_dt,
+                    effective_dt == cursor_dt,
                     Highlight.id > cursor_id,
                 ),
             )
         )
     elif cursor_dt:
-        query = query.filter(Highlight.created_at < cursor_dt)
+        query = query.filter(effective_dt < cursor_dt)
 
     if sort == "recent-asc":
-        query = query.order_by(Highlight.created_at.asc(), Highlight.id.asc())
+        query = query.order_by(effective_dt.asc(), Highlight.id.asc())
     elif sort == "favorite-desc":
         query = query.order_by(
-            Highlight.is_favorite.desc(), Highlight.created_at.desc(), Highlight.id.desc()
+            Highlight.is_favorite.desc(), effective_dt.desc(), Highlight.id.desc()
         )
     elif sort == "favorite-asc":
         query = query.order_by(
-            Highlight.is_favorite.asc(), Highlight.created_at.asc(), Highlight.id.asc()
+            Highlight.is_favorite.asc(), effective_dt.asc(), Highlight.id.asc()
         )
     else:  # recent-desc
-        query = query.order_by(Highlight.created_at.desc(), Highlight.id.desc())
+        query = query.order_by(effective_dt.desc(), Highlight.id.desc())
 
     highlights = query.limit(limit + 1).all()
     has_more = len(highlights) > limit
@@ -1033,7 +1043,7 @@ def api_list_highlights(
         encode_api_cursor(
             {
                 "sort": sort,
-                "created_at": page[-1].created_at.isoformat(),
+                "created_at": _effective_date(page[-1]).isoformat(),
                 "id": str(page[-1].id),
                 "is_favorite": bool(page[-1].is_favorite),
             }
@@ -1869,7 +1879,7 @@ def source_detail(
         db.query(Highlight)
         .options(joinedload(Highlight.tags))
         .filter(Highlight.source_id == source_id, Highlight.user_id == user.id)
-        .order_by(Highlight.created_at.desc())
+        .order_by(_effective_date().desc())
         .limit(SOURCE_HIGHLIGHTS_PREVIEW_LIMIT)
         .all()
     )
@@ -1994,7 +2004,7 @@ def search_quick(
                     Highlight.page_title.ilike(search_term),
                 ),
             )
-            .order_by(Highlight.created_at.desc())
+            .order_by(_effective_date().desc())
             .limit(5)
             .all()
         )
@@ -2104,15 +2114,15 @@ def search_page(
 
         # Apply sorting
         if sort == "recent-asc":
-            query = query.order_by(Highlight.created_at.asc())
+            query = query.order_by(_effective_date().asc())
         elif sort == "relevance" and q:
             # For relevance, prioritize exact matches in text over note
             # This is a simple implementation; could be enhanced with full-text search
             query = query.order_by(
-                Highlight.text.ilike(search_term).desc(), Highlight.created_at.desc()
+                Highlight.text.ilike(search_term).desc(), _effective_date().desc()
             )
         else:  # Default to recent-desc
-            query = query.order_by(Highlight.created_at.desc())
+            query = query.order_by(_effective_date().desc())
 
         results = query.all()
 
