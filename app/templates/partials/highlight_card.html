@@ -1,7 +1,8 @@
 <div id="highlight-view" class="card" style="padding: 20px 24px; position: relative;">
     <!-- Highlight Text -->
     <div style="margin-bottom: 16px;">
-        <p class="highlight-main-text" style="font-size: 18px; line-height: 1.65; color: #111827; margin: 0;">{{ highlight.text }}</p>
+        <p class="highlight-main-text" style="font-size: 18px; line-height: 1.65; color: #111827; margin: 0;">{{
+            highlight.text }}</p>
     </div>
 
     <!-- Note -->
@@ -37,8 +38,7 @@
             {% if highlight.collections %}
             {% if highlight.source %}<span class="meta-divider">·</span>{% endif %}
             {% for collection in highlight.collections %}
-            <a href="/collections/{{ collection.id }}"
-                class="pill pill--amber">
+            <a href="/collections/{{ collection.id }}" class="pill pill--amber">
                 {{ collection.name }}
             </a>
             {% endfor %}
@@ -66,8 +66,6 @@
         </div>
 
         <div class="row" style="gap: 10px; white-space: nowrap;">
-            <span class="muted-2">{{ highlight.device.name }}</span>
-            <span class="muted-2">·</span>
             <span class="muted-2">{{ (highlight.highlighted_at or highlight.created_at).strftime('%b %Y') }}</span>
             <div class="row" style="gap: 6px;">
                 <button class="icon-btn fav-toggle" data-fav="{{ 'true' if highlight.is_favorite else 'false' }}"
@@ -77,8 +75,8 @@
                     hx-on::after-swap="this.style.pointerEvents='auto'; const icon = this.querySelector('[data-fav]'); const isFav = icon?.dataset.fav === 'true'; this.dataset.fav = isFav ? 'true' : 'false'; this.title = isFav ? 'Unfavorite' : 'Favorite';"
                     title="{% if highlight.is_favorite %}Unfavorite{% else %}Favorite{% endif %}">
                     {% if highlight.is_favorite %}
-                    <svg class="icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"
-                        fill="currentColor" data-fav="true">
+                    <svg class="icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"
+                        data-fav="true">
                         <path
                             d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
                     </svg>
@@ -117,12 +115,18 @@
 
                 <button class="icon-btn danger" hx-delete="/highlights/{{ highlight.id }}"
                     hx-confirm="Permanently delete this highlight? This cannot be undone." hx-target="#highlight-view"
-                    hx-swap="outerHTML"
-                    title="Delete permanently">
+                    hx-swap="outerHTML" title="Delete permanently">
                     <svg class="icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
                         stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round"
                             d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                    </svg>
+                </button>
+                <button class="icon-btn" onclick="toggleHighlightMeta('{{ highlight.id }}')" title="Info">
+                    <svg class="icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                            d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
                     </svg>
                 </button>
             </div>
@@ -156,8 +160,8 @@
                 hx-on::after-swap="this.style.pointerEvents='auto'; const icon = this.querySelector('[data-fav]'); const isFav = icon?.dataset.fav === 'true'; this.dataset.fav = isFav ? 'true' : 'false'; this.title = isFav ? 'Unfavorite' : 'Favorite';"
                 title="{% if highlight.is_favorite %}Unfavorite{% else %}Favorite{% endif %}">
                 {% if highlight.is_favorite %}
-                <svg class="icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"
-                    fill="currentColor" data-fav="true">
+                <svg class="icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"
+                    data-fav="true">
                     <path
                         d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
                 </svg>
@@ -178,17 +182,16 @@
             <div class="mobile-compact-details">
                 <div class="mobile-compact-header">
                     <div class="mobile-compact-topline">
-                        <span class="muted-2">{{ highlight.device.name }}</span>
-                        <span class="muted-2">·</span>
-                        <span class="muted-2">{{ (highlight.highlighted_at or highlight.created_at).strftime('%b %Y') }}</span>
+                        <span class="muted-2">{{ (highlight.highlighted_at or highlight.created_at).strftime('%b %Y')
+                            }}</span>
                         {% if highlight.status.value == 'archived' %}
                         <span class="pill pill--danger">Archived</span>
                         {% endif %}
                     </div>
 
                     <div class="mobile-compact-actions">
-                        <button class="icon-btn mobile-compact-action-btn" hx-get="/highlights/{{ highlight.id }}/edit" hx-target="#highlight-view"
-                            hx-swap="innerHTML" title="Edit">
+                        <button class="icon-btn mobile-compact-action-btn" hx-get="/highlights/{{ highlight.id }}/edit"
+                            hx-target="#highlight-view" hx-swap="innerHTML" title="Edit">
                             <svg class="icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
                                 stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M12 20h9" />
@@ -196,7 +199,8 @@
                                     d="M16.5 3.5a2.121 2.121 0 113 3L7 19l-4 1 1-4 12.5-12.5z" />
                             </svg>
                         </button>
-                        <button class="icon-btn mobile-compact-action-btn" hx-post="/highlights/{{ highlight.id }}/archive"
+                        <button class="icon-btn mobile-compact-action-btn"
+                            hx-post="/highlights/{{ highlight.id }}/archive"
                             hx-confirm="{% if highlight.status.value == 'archived' %}Unarchive this highlight?{% else %}Archive this highlight?{% endif %}"
                             hx-target="#highlight-view" hx-swap="outerHTML"
                             title="{% if highlight.status.value == 'archived' %}Unarchive{% else %}Archive{% endif %}">
@@ -209,14 +213,22 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M9 9h6" />
                             </svg>
                         </button>
-                        <button class="icon-btn danger mobile-compact-action-btn mobile-compact-action-btn--danger" hx-delete="/highlights/{{ highlight.id }}"
-                            hx-confirm="Permanently delete this highlight? This cannot be undone." hx-target="#highlight-view"
-                            hx-swap="outerHTML"
-                            title="Delete permanently">
+                        <button class="icon-btn danger mobile-compact-action-btn mobile-compact-action-btn--danger"
+                            hx-delete="/highlights/{{ highlight.id }}"
+                            hx-confirm="Permanently delete this highlight? This cannot be undone."
+                            hx-target="#highlight-view" hx-swap="outerHTML" title="Delete permanently">
                             <svg class="icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
                                 stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round"
                                     d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                            </svg>
+                        </button>
+                        <button class="icon-btn mobile-compact-action-btn"
+                            onclick="toggleHighlightMeta('{{ highlight.id }}')" title="Info">
+                            <svg class="icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                                stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                    d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
                             </svg>
                         </button>
                     </div>
@@ -237,7 +249,8 @@
                     </span>
                     {% endfor %}
                     {% endif %}
-                    <button onclick="showAddToCollection()" title="Add to collection" class="pill pill-btn mobile-pill-action">
+                    <button onclick="showAddToCollection()" title="Add to collection"
+                        class="pill pill-btn mobile-pill-action">
                         <span>+</span><span>Col</span>
                     </button>
                     <button hx-get="/highlights/{{ highlight.id }}/add-tag" hx-target="#tag-modal" hx-swap="innerHTML"
@@ -247,8 +260,59 @@
             </div>
         </div>
     </details>
+
+    <!-- Metadata panel -->
+    <div id="highlight-meta-{{ highlight.id }}"
+        style="display: none; margin-top: 14px; padding-top: 14px; border-top: 1px solid #f0f0f0; grid-template-columns: max-content 1fr; gap: 5px 16px; font-size: 12px; align-items: baseline;">
+        {% if highlight.device %}
+        <span class="muted-2">Device</span>
+        <span class="muted">{{ highlight.device.name }}</span>
+        {% endif %}
+
+        <span class="muted-2">Highlighted</span>
+        {% if highlight.highlighted_at %}
+        <span class="muted">{% if highlight.highlighted_at.hour == 0 and highlight.highlighted_at.minute == 0 %}{{
+            highlight.highlighted_at.strftime('%-d %b %Y') }}{% else %}{{ highlight.highlighted_at.strftime('%-d %b %Y,
+            %-I:%M %p') }}{% endif %}</span>
+        {% else %}
+        <span class="muted-2">—</span>
+        {% endif %}
+
+        <span class="muted-2">Imported</span>
+        <span class="muted">{{ highlight.created_at.strftime('%-d %b %Y, %-I:%M %p') }}</span>
+
+        {% if (highlight.updated_at - highlight.created_at).total_seconds() > 60 %}
+        <span class="muted-2">Last edited</span>
+        <span class="muted">{{ highlight.updated_at.strftime('%-d %b %Y, %-I:%M %p') }}</span>
+        {% endif %}
+
+        {% if highlight.location %}
+        <span class="muted-2">Location</span>
+        <span class="muted">{% if highlight.location.chapter and highlight.location.page %}Ch. {{
+            highlight.location.chapter }}, p. {{ highlight.location.page }}{% elif highlight.location.chapter %}Ch. {{
+            highlight.location.chapter }}{% elif highlight.location.page %}p. {{ highlight.location.page }}{% endif
+            %}</span>
+        {% endif %}
+
+        {% if highlight.url %}
+        <span class="muted-2">URL</span>
+        <a href="{{ highlight.url }}" target="_blank" class="muted"
+            style="text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block;">{{
+            highlight.url }}</a>
+        {% endif %}
+
+        <span class="muted-2">ID</span>
+        <span style="color: var(--muted-2); font-family: ui-monospace, monospace; font-size: 11px;">{{ highlight.id
+            }}</span>
+    </div>
 </div>
 <script>
+    function toggleHighlightMeta(id) {
+        const el = document.getElementById('highlight-meta-' + id);
+        if (!el) return;
+        el.style.display = el.style.display === 'none' ? 'grid' : 'none';
+    }
+
     (function () {
         const card = document.querySelector('#highlight-view');
         const details = document.querySelector('#highlight-view .highlight-details');
