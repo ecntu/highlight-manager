@@ -1,12 +1,10 @@
 <div class="list-card">
 
-    <!-- Highlight text - clickable to detail page -->
-    <a href="/highlights/{{ highlight.id }}" style="text-decoration: none; color: inherit; display: block;">
-        <p style="font-size: 15px; line-height: 1.6; color: #1a1a1a; margin: 0 0 8px 0;">{{ highlight.text }}</p>
+    <a href="/highlights/{{ highlight.id }}" style="text-decoration: none; color: inherit; display: block; margin-bottom: 10px;">
+        <p style="font-family: var(--font-serif); font-size: 16px; line-height: 1.65; color: var(--text-strong); margin: 0;">{{ highlight.text }}</p>
 
-        <!-- Note preview (first ~200 chars) -->
         {% if highlight.note %}
-        <p style="font-size: 14px; line-height: 1.5; color: #6b7280; font-style: italic; margin: 0 0 12px 0;">
+        <p style="font-size: 13.5px; line-height: 1.5; color: var(--muted); font-style: italic; margin: 7px 0 0 0;">
             {% if highlight.note|length > 200 %}
             {{ highlight.note[:200] }}...
             {% else %}
@@ -16,57 +14,46 @@
         {% endif %}
     </a>
 
-    <!-- Metadata row -->
-    <div class="row-between" style="font-size: 13px;">
-        <div class="row" style="gap: 6px; flex-wrap: wrap;">
-            <!-- Source -->
+    <div class="row-between" style="font-size: 12.5px;">
+        <div class="row" style="gap: 5px; flex-wrap: wrap;">
             {% if highlight.source %}
             <a href="/search?source_id={{ highlight.source.id }}"
-                style="color: #6b7280; text-decoration: none; transition: color 0.15s;"
-                onmouseover="this.style.color='#111827';" onmouseout="this.style.color='#6b7280';">
+                style="color: var(--muted); text-decoration: none; font-weight: 500; transition: color 0.15s;"
+                onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--muted)'">
                 {{ highlight.source.name }}
             </a>
             {% endif %}
 
-            <!-- Collections -->
             {% if highlight.collections %}
             {% if highlight.source %}<span class="meta-divider">·</span>{% endif %}
             {% for collection in highlight.collections %}
-            <a href="/search?collection_id={{ collection.id }}"
-                class="pill pill--amber">
-                {{ collection.name }}
-            </a>
+            <a href="/search?collection_id={{ collection.id }}" class="pill pill--amber">{{ collection.name }}</a>
             {% endfor %}
             {% endif %}
 
-            <!-- Tags -->
             {% if highlight.tags %}
             {% if highlight.source or highlight.collections %}<span class="meta-divider">·</span>{% endif %}
             {% for tag in highlight.tags %}
-            <a href="/search?tag={{ tag.name }}"
-                class="pill pill--blue">
-                {{ tag.name }}
-            </a>
+            <a href="/search?tag={{ tag.name }}" class="pill pill--blue">{{ tag.name }}</a>
             {% endfor %}
             {% endif %}
         </div>
 
-        <!-- Date & Favorite -->
-        <div class="row" style="gap: 10px; white-space: nowrap;">
+        <div class="row" style="gap: 8px; white-space: nowrap; flex-shrink: 0;">
             <span class="muted-2">{{ (highlight.highlighted_at or highlight.created_at).strftime('%b %Y') }}</span>
-            <button id="fav-btn-{{ highlight.id }}" class="icon-btn fav-toggle" data-fav="{{ 'true' if highlight.is_favorite else 'false' }}"
+            <button id="fav-btn-{{ highlight.id }}" class="icon-btn fav-toggle"
+                data-fav="{{ 'true' if highlight.is_favorite else 'false' }}"
                 hx-put="/highlights/{{ highlight.id }}/favorite"
                 hx-target="#fav-icon-{{ highlight.id }}" hx-swap="innerHTML swap:0.1s"
                 title="{% if highlight.is_favorite %}Unfavorite{% else %}Favorite{% endif %}"
                 hx-disabled-elt="this"
-                hx-on::before-request="document.getElementById('fav-icon-{{ highlight.id }}').innerHTML = '<span class=&quot;spinner&quot; style=&quot;color: #9ca3af; font-size: 14px;&quot;>●</span>';"
+                hx-on::before-request="document.getElementById('fav-icon-{{ highlight.id }}').innerHTML = '<span class=&quot;spinner&quot; style=&quot;color: var(--muted-2); font-size: 13px;&quot;>●</span>';"
                 hx-on::after-swap="const icon = document.getElementById('fav-icon-{{ highlight.id }}')?.querySelector('[data-fav]'); const isFav = icon?.dataset.fav === 'true'; this.dataset.fav = isFav ? 'true' : 'false'; this.title = isFav ? 'Unfavorite' : 'Favorite';">
                 <span id="fav-icon-{{ highlight.id }}" aria-hidden="true">
                     {% if highlight.is_favorite %}
                     <svg class="icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"
                         data-fav="true">
-                        <path
-                            d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+                        <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
                     </svg>
                     {% else %}
                     <svg class="icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"

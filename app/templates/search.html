@@ -3,66 +3,61 @@
 {% block title %}Search{% endblock %}
 
 {% block content %}
-<div class="card">
-    <form hx-get="/search" hx-target="#search-results" hx-swap="innerHTML"
-        hx-trigger="input changed delay:300ms from:#search-input, change from:select">
-        <div class="search-form">
-            <div class="search-input-wrap">
-                <svg class="search-input-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
-                    stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
-                <input type="text" id="search-input" name="q" value="{{ query or '' }}"
-                    placeholder="Search highlights, notes, sources..." class="input-lg search-input" autofocus>
-            </div>
+<form hx-get="/search" hx-target="#search-results" hx-swap="innerHTML"
+    hx-trigger="input changed delay:300ms from:#search-input, change from:select"
+    style="margin-bottom: 20px;">
 
-            <div class="search-filters">
-                <select id="filter-status" name="status" class="select-compact" aria-label="Status">
-                    <option value="active" {% if status_ui=='active' %}selected{% endif %}>Active Only</option>
-                    <option value="archived" {% if status_ui=='archived' %}selected{% endif %}>Archived Only</option>
-                    <option value="all" {% if status_ui=='all' %}selected{% endif %}>Active & Archived</option>
-                </select>
+    <!-- Search input -->
+    <div class="search-input-wrap" style="margin-bottom: 10px;">
+        <svg class="search-input-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+        </svg>
+        <input type="text" id="search-input" name="q" value="{{ query or '' }}"
+            placeholder="Search highlights, notes, sources..."
+            style="font-size: 16px; padding: 11px 16px 11px 40px; border-radius: var(--radius-md);"
+            autofocus>
+    </div>
 
-                <select id="filter-type" name="source_type" class="select-compact" aria-label="Source type">
-                    <option value="">All Types</option>
-                    <option value="book" {% if source_type=='book' %}selected{% endif %}>Books</option>
-                    <option value="web" {% if source_type=='web' %}selected{% endif %}>Web</option>
-                    <option value="article" {% if source_type=='article' %}selected{% endif %}>Articles</option>
-                    <option value="podcast" {% if source_type=='podcast' %}selected{% endif %}>Podcasts</option>
-                </select>
+    <!-- Filters -->
+    <div style="display: flex; flex-wrap: wrap; gap: 6px; align-items: center;">
+        <select id="filter-status" name="status" class="filter-select" aria-label="Status">
+            <option value="active" {% if status_ui=='active' %}selected{% endif %}>Active</option>
+            <option value="archived" {% if status_ui=='archived' %}selected{% endif %}>Archived</option>
+            <option value="all" {% if status_ui=='all' %}selected{% endif %}>All statuses</option>
+        </select>
 
-                <select id="filter-favorite" name="favorite" class="select-compact" aria-label="Highlights">
-                    <option value="">All Highlights</option>
-                    <option value="true" {% if favorite=='true' %}selected{% endif %}>Favorites Only</option>
-                </select>
+        <select id="filter-type" name="source_type" class="filter-select" aria-label="Source type">
+            <option value="">All types</option>
+            <option value="book" {% if source_type=='book' %}selected{% endif %}>Books</option>
+            <option value="web" {% if source_type=='web' %}selected{% endif %}>Web</option>
+        </select>
 
-                <select id="filter-device" name="device_id" class="select-compact" aria-label="Device">
-                    <option value="">All Devices</option>
-                    {% for device in devices %}
-                    <option value="{{ device.id }}" {% if device_id==device.id %}selected{% endif %}>
-                        {{ device.name }}
-                    </option>
-                    {% endfor %}
-                </select>
+        <select id="filter-favorite" name="favorite" class="filter-select" aria-label="Highlights">
+            <option value="">All highlights</option>
+            <option value="true" {% if favorite=='true' %}selected{% endif %}>Favorites only</option>
+        </select>
 
-                <select id="filter-sort" name="sort" class="select-compact" aria-label="Sort by">
-                    <option value="recent-desc" {% if sort=='recent-desc' or not sort %}selected{% endif %}>
-                        Recent First
-                    </option>
-                    <option value="recent-asc" {% if sort=='recent-asc' %}selected{% endif %}>Oldest First</option>
-                    <option value="relevance" {% if sort=='relevance' %}selected{% endif %}>Most Relevant</option>
-                </select>
-            </div>
-        </div>
-    </form>
-</div>
+        {% if devices %}
+        <select id="filter-device" name="device_id" class="filter-select" aria-label="Device">
+            <option value="">All devices</option>
+            {% for device in devices %}
+            <option value="{{ device.id }}" {% if device_id==device.id %}selected{% endif %}>{{ device.name }}</option>
+            {% endfor %}
+        </select>
+        {% endif %}
 
-<!-- Results -->
+        <select id="filter-sort" name="sort" class="filter-select" aria-label="Sort by">
+            <option value="recent-desc" {% if sort=='recent-desc' or not sort %}selected{% endif %}>Recent first</option>
+            <option value="recent-asc" {% if sort=='recent-asc' %}selected{% endif %}>Oldest first</option>
+            <option value="relevance" {% if sort=='relevance' %}selected{% endif %}>Most relevant</option>
+        </select>
+    </div>
+</form>
+
 {% if query or source_type or source_id or collection_id or tag or device_id or status or favorite %}
-<div class="section-header">
+<div class="row-between" style="margin-bottom: 14px;">
     <h2 class="section-title">
-        {% if query %}Results for "{{ query }}"{% else %}Filtered Results{% endif %}
+        {% if query %}Results for "{{ query }}"{% else %}Filtered results{% endif %}
     </h2>
     <small class="section-meta">{{ results|length }} found</small>
 </div>
@@ -71,13 +66,12 @@
     {% include "partials/search_results.html" %}
 </div>
 {% else %}
-<div style="text-align: center; padding: 48px 24px; color: #999;">
-    <svg class="icon" xmlns="http://www.w3.org/2000/svg" style="width: 48px; height: 48px; margin: 0 auto 16px; opacity: 0.3;"
+<div style="text-align: center; padding: 64px 24px; color: var(--muted-2);">
+    <svg xmlns="http://www.w3.org/2000/svg" style="width: 36px; height: 36px; margin: 0 auto 12px; opacity: 0.25;"
         fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
     </svg>
-    <p style="font-size: 15px;">Start typing to search your highlights</p>
+    <p style="font-size: 14px;">Start typing to search your highlights</p>
 </div>
 {% endif %}
 {% endblock %}

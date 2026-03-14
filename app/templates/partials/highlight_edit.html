@@ -1,9 +1,9 @@
-<div id="highlight-view" class="card" style="padding: 20px 24px;">
+<div id="highlight-view">
     <form hx-patch="/highlights/{{ highlight.id }}" hx-target="#highlight-view" hx-swap="outerHTML">
         <div class="form-group">
             <label>Highlight Text</label>
             <textarea name="text" rows="6" required
-                style="font-size: 15px; line-height: 1.6;">{{ highlight.text }}</textarea>
+                style="font-family: var(--font-serif); font-size: 15px; line-height: 1.65;">{{ highlight.text }}</textarea>
         </div>
 
         <div class="form-group">
@@ -25,7 +25,6 @@
                 <input type="text" name="source_url" value="{{ highlight.url or '' }}"
                     placeholder="https://example.com/article">
             </div>
-
             <div class="form-group">
                 <label>Source Title (for books)</label>
                 <input type="text" name="source_title"
@@ -47,10 +46,10 @@
                 value="{{ highlight.highlighted_at.strftime('%Y-%m-%d') if highlight.highlighted_at else '' }}">
         </div>
 
-        <div class="form-actions" style="margin-top: 16px; gap: 10px;">
-            <button type="submit" class="btn btn--ghost">Save</button>
+        <div class="form-actions" style="margin-top: 16px;">
+            <button type="submit" class="btn btn--ghost btn--sm">Save</button>
             <button type="button" id="cancel-edit-{{ highlight.id }}" hx-get="/highlights/{{ highlight.id }}"
-                hx-target="#highlight-view" hx-swap="outerHTML" class="btn btn--ghost">Cancel</button>
+                hx-target="#highlight-view" hx-swap="outerHTML" class="btn btn--ghost btn--sm">Cancel</button>
         </div>
     </form>
 </div>

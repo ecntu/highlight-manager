@@ -1,31 +1,30 @@
 {% extends "base.html" %}
 
 {% block content %}
-<!-- Quick Add with Progressive Disclosure -->
-<div class="card" style="margin-bottom: 32px;">
+<!-- Quick Add -->
+<div style="margin-bottom: 28px; padding: 14px 16px; background: var(--panel-subtle); border: 1px solid var(--border); border-radius: var(--radius-md);">
     <form id="quick-add-form" hx-post="/highlights" hx-target="#highlights-list .stack" hx-swap="afterbegin"
         hx-on::after-request="this.reset(); hideExtraFields()">
         <div class="form-group" style="margin-bottom: 0;">
-            <textarea id="highlight-text" name="text" rows="2" placeholder="Paste a highlight to save it..."
-                style="font-size: 15px; resize: vertical;" required autofocus oninput="showExtraFields()"></textarea>
+            <textarea id="highlight-text" name="text" rows="2"
+                placeholder="Paste a highlight to save it..."
+                style="font-family: var(--font-serif); font-size: 16px; line-height: 1.65; resize: vertical; border: none; background: transparent; padding: 0; box-shadow: none; outline: none;"
+                required autofocus oninput="showExtraFields()"></textarea>
         </div>
 
-        <!-- Extra fields - hidden until text is entered -->
-        <div id="extra-fields" class="section-divider" style="display: none;">
-            <div class="grid-two" style="margin-bottom: 12px;">
+        <div id="extra-fields" style="display: none; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border);">
+            <div class="grid-two" style="margin-bottom: 8px;">
                 <input type="text" name="tags" placeholder="Tags (comma-separated)">
-                <input type="text" name="note" placeholder="Your note (why it matters)">
+                <input type="text" name="note" placeholder="Your note">
             </div>
-
-            <div class="grid-two" style="margin-bottom: 16px;">
+            <div class="grid-two" style="margin-bottom: 12px;">
                 <input type="text" name="source_url" placeholder="URL (for web)">
                 <input type="text" name="source_title" placeholder="Title (for books)">
             </div>
-
             <div class="form-actions">
-                <button type="submit" class="btn btn--ghost">
-                    Save Highlight
-                    <span class="htmx-indicator">...</span>
+                <button type="submit" class="btn btn--ghost btn--sm">
+                    Save
+                    <span class="htmx-indicator" style="font-size: 11px;">...</span>
                 </button>
             </div>
         </div>
@@ -36,26 +35,20 @@
 <div style="margin-bottom: 24px;">
     <div class="row-between compact-header" style="margin-bottom: 8px;">
         <h2 class="section-title" style="margin: 0;">Due Reminders</h2>
-        <a href="/reminders" style="text-decoration:none;" class="section-meta">View
-            all</a>
+        <a href="/reminders" style="text-decoration: none;" class="section-meta">View all</a>
     </div>
-    <div class="stack" style="gap: 10px;">
+    <div class="stack" style="gap: 8px;">
         {% for reminder in due_reminders %}
         <div id="due-reminder-{{ reminder.id }}" class="list-card reminder-card">
             <div class="reminder-card-content">
                 <a href="/highlights/{{ reminder.highlight.id }}" style="color: inherit; text-decoration: none;">
-                    <p style="margin: 0 0 4px 0; font-size: 14px;">{{ reminder.highlight.text[:160] }}{% if
-                        reminder.highlight.text|length > 160 %}...{% endif %}</p>
+                    <p style="margin: 0 0 4px 0; font-family: var(--font-serif); font-size: 14px; line-height: 1.55; color: var(--text-strong);">{{ reminder.highlight.text[:160] }}{% if reminder.highlight.text|length > 160 %}...{% endif %}</p>
                 </a>
-                <small class="muted-2">
-                    Due {{ reminder.remind_at.strftime('%b %d, %Y') }}
-                </small>
+                <small class="muted-2">Due {{ reminder.remind_at.strftime('%b %d, %Y') }}</small>
             </div>
             <div class="reminder-card-actions">
                 <button hx-delete="/reminders/{{ reminder.id }}" hx-target="#due-reminder-{{ reminder.id }}"
-                    hx-swap="outerHTML swap:200ms" class="icon-btn"
-                    style="width: 28px; height: 28px; color: #9ca3af; border-color: #e5e7eb;" title="Mark reminder done"
-                    aria-label="Mark reminder done">
+                    hx-swap="outerHTML swap:200ms" class="icon-btn" title="Mark done" aria-label="Mark reminder done">
                     <svg class="icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
                         stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
@@ -69,14 +62,12 @@
 {% endif %}
 
 <!-- Recent Highlights / Sources -->
-<div class="row-between compact-header" style="margin-bottom: 12px;">
-    <div class="row" style="gap: 10px; align-items: center;">
+<div class="row-between compact-header" style="margin-bottom: 14px;">
+    <div class="row" style="gap: 14px; align-items: center;">
         <h2 class="section-title" style="margin: 0;">Recent</h2>
-        <div class="row" style="gap: 4px;">
-            <button id="tab-highlights" onclick="switchRecentTab('highlights')"
-                class="pill pill--blue" style="cursor: pointer; border: none;">Highlights</button>
-            <button id="tab-sources" onclick="switchRecentTab('sources')"
-                class="pill" style="cursor: pointer; border: none; background: transparent; color: #6b7280;">Sources</button>
+        <div class="tab-row">
+            <button id="tab-highlights" class="tab-btn tab-btn--active" onclick="switchRecentTab('highlights')">Highlights</button>
+            <button id="tab-sources" class="tab-btn" onclick="switchRecentTab('sources')">Sources</button>
         </div>
     </div>
     <a id="recent-show-more" href="/search" class="section-meta" style="text-decoration: none;">Show more</a>
@@ -90,20 +81,20 @@
     {% if recent_sources %}
     <div class="stack">
         {% for source in recent_sources %}
-        <div class="list-card clickable" style="overflow: hidden;" onclick="window.location='/sources/{{ source.id }}'">
+        <div class="list-card clickable" onclick="window.location='/sources/{{ source.id }}'">
             <div class="row-between" style="align-items: start;">
                 <div style="flex: 1; min-width: 0;">
-                    <h3 style="font-size: 15px; margin-bottom: 6px; font-weight: 600; overflow-wrap: break-word; word-break: break-word; min-width: 0;">{{ source.source_name }}</h3>
+                    <h3 style="font-size: 15px; font-weight: 600; margin-bottom: 4px; overflow-wrap: break-word; word-break: break-word;">{{ source.source_name }}</h3>
                     {% if source.author %}
-                    <p class="muted" style="font-size: 13px; margin-bottom: 8px;">{{ source.author }}</p>
+                    <p class="muted" style="font-size: 13px; margin-bottom: 6px;">{{ source.author }}</p>
                     {% endif %}
-                    <div class="row" style="gap: 12px; font-size: 13px; flex-wrap: wrap;">
+                    <div class="row" style="gap: 10px; font-size: 12.5px; flex-wrap: wrap;">
                         <span class="muted-2" style="text-transform: capitalize;">{{ source.type.value }}</span>
                         <span class="meta-divider">·</span>
                         <span class="muted-2">{{ source.highlight_count }} highlight{% if source.highlight_count != 1 %}s{% endif %}</span>
                         {% if source.favorite_highlight_count > 0 %}
                         <span class="meta-divider">·</span>
-                        <span class="muted">♥ {{ source.favorite_highlight_count }}</span>
+                        <span class="muted" style="color: var(--accent);">♥ {{ source.favorite_highlight_count }}</span>
                         {% endif %}
                         {% if source.last_highlight_at %}
                         <span class="meta-divider">·</span>
@@ -116,7 +107,7 @@
         {% endfor %}
     </div>
     {% else %}
-    <p class="muted" style="text-align: center; padding: 40px 0;">No sources yet.</p>
+    <p class="muted-2" style="text-align: center; padding: 48px 0;">No sources yet.</p>
     {% endif %}
 </div>
 
@@ -127,19 +118,8 @@
         document.getElementById('sources-list').style.display = showingHighlights ? 'none' : '';
         document.getElementById('recent-show-more').href = showingHighlights ? '/search' : '/sources';
 
-        const tabHL = document.getElementById('tab-highlights');
-        const tabSrc = document.getElementById('tab-sources');
-        if (showingHighlights) {
-            tabHL.className = 'pill pill--blue';
-            tabHL.style.cssText = 'cursor: pointer; border: none;';
-            tabSrc.className = 'pill';
-            tabSrc.style.cssText = 'cursor: pointer; border: none; background: transparent; color: #6b7280;';
-        } else {
-            tabSrc.className = 'pill pill--blue';
-            tabSrc.style.cssText = 'cursor: pointer; border: none;';
-            tabHL.className = 'pill';
-            tabHL.style.cssText = 'cursor: pointer; border: none; background: transparent; color: #6b7280;';
-        }
+        document.getElementById('tab-highlights').className = 'tab-btn' + (showingHighlights ? ' tab-btn--active' : '');
+        document.getElementById('tab-sources').className = 'tab-btn' + (!showingHighlights ? ' tab-btn--active' : '');
     }
 </script>
 
@@ -149,32 +129,24 @@
         const extraFields = document.getElementById('extra-fields');
         if (text && extraFields.style.display === 'none') {
             extraFields.style.display = 'block';
-            extraFields.style.animation = 'slideDown 0.2s ease-out';
+            extraFields.style.animation = 'slideDown 0.18s ease-out';
         }
     }
 
     function hideExtraFields() {
-        const extraFields = document.getElementById('extra-fields');
-        const highlightText = document.getElementById('highlight-text');
-        extraFields.style.display = 'none';
-        highlightText.value = '';
-        highlightText.rows = 3;
+        document.getElementById('extra-fields').style.display = 'none';
+        const ta = document.getElementById('highlight-text');
+        ta.value = '';
+        ta.rows = 2;
     }
 
-    // Add animation
     const style = document.createElement('style');
     style.textContent = `
-    @keyframes slideDown {
-        from {
-            opacity: 0;
-            transform: translateY(-10px);
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-6px); }
+            to { opacity: 1; transform: translateY(0); }
         }
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
-    }
-`;
+    `;
     document.head.appendChild(style);
 </script>
 {% endblock %}

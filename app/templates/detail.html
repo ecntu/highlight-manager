@@ -5,23 +5,22 @@
 {% block content %}
 {% include 'partials/highlight_card.html' %}
 
-<!-- Reminder section here -->
 {% include 'partials/reminders_panel.html' %}
 
 <!-- Collection Picker Modal -->
 <div id="collection-modal"
-    style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.4); backdrop-filter: blur(4px); z-index: 1000; align-items: center; justify-content: center;"
+    style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.35); backdrop-filter: blur(4px); z-index: 1000; align-items: center; justify-content: center;"
     onclick="if(event.target === this) this.style.display='none'">
-    <div style="max-width: 420px; width: 90%; background: white; border-radius: 16px; padding: 28px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);"
+    <div style="max-width: 400px; width: 90%; background: var(--panel); border-radius: var(--radius-lg); padding: 24px; border: 1px solid var(--border); box-shadow: 0 20px 40px rgba(0,0,0,0.12);"
         onclick="event.stopPropagation()">
-        <h3 style="margin-bottom: 20px; font-size: 18px; font-weight: 600; color: #1a1a1a;">Add to Collection</h3>
-        <div id="collection-list" style="max-height: 400px; overflow-y: auto;">Loading...</div>
+        <h3 style="margin-bottom: 18px; font-size: 16px; font-weight: 600; color: var(--text);">Add to Collection</h3>
+        <div id="collection-list" style="max-height: 380px; overflow-y: auto;">Loading...</div>
     </div>
 </div>
 
 <!-- Tag Add Modal -->
 <div id="tag-modal"
-    style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;"
+    style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.35); backdrop-filter: blur(4px); z-index: 1000; align-items: center; justify-content: center;"
     onclick="if(event.target === this) this.style.display='none'"></div>
 
 <script>
@@ -35,40 +34,33 @@
             .then(html => {
                 const parser = new DOMParser();
                 const doc = parser.parseFromString(html, 'text/html');
-                const currentCollections = [{% for c in highlight.collections %}'{{ c.id }}'{% if not loop.last %}, {% endif %} {% endfor %}];
-    const highlightId = '{{ highlight.id }}';
+                const currentCollections = [{% for c in highlight.collections %}'{{ c.id }}'{% if not loop.last %}, {% endif %}{% endfor %}];
+                const highlightId = '{{ highlight.id }}';
 
-    const allCollections = doc.querySelectorAll('[data-collection-id]');
-    if (allCollections.length === 0) {
-        container.innerHTML = '<p style="color: #6b7280; font-size: 14px;">No collections yet. <a href="/collections" style="color: #3b82f6; text-decoration: none; font-weight: 500;">Create one</a>.</p>';
-    } else {
-        let buttons = '';
-        allCollections.forEach(col => {
-            const collectionId = col.dataset.collectionId;
-            const collectionName = col.dataset.collectionName || col.querySelector('h3')?.textContent?.trim() || 'Untitled';
-            const isIn = currentCollections.includes(collectionId);
-
-            buttons += `<button 
-                                    onclick="addToCollection('${collectionId}', '${highlightId}')" 
-                                    class="modal-btn"
-                                    ${isIn ? 'disabled' : ''}>
-                                    ${isIn ? '<span style="color: #10b981; margin-right: 6px;">✓</span>' : ''}${collectionName}
-                                </button>`;
-        });
-        container.innerHTML = buttons;
-    }
+                const allCollections = doc.querySelectorAll('[data-collection-id]');
+                if (allCollections.length === 0) {
+                    container.innerHTML = '<p style="color: var(--muted); font-size: 14px;">No collections yet. <a href="/collections" style="color: var(--accent); text-decoration: none; font-weight: 500;">Create one</a>.</p>';
+                } else {
+                    let buttons = '';
+                    allCollections.forEach(col => {
+                        const collectionId = col.dataset.collectionId;
+                        const collectionName = col.dataset.collectionName || col.querySelector('h3')?.textContent?.trim() || 'Untitled';
+                        const isIn = currentCollections.includes(collectionId);
+                        buttons += `<button onclick="addToCollection('${collectionId}', '${highlightId}')" class="modal-btn" ${isIn ? 'disabled' : ''}>${isIn ? '<span style="color: var(--success); margin-right: 6px;">✓</span>' : ''}${collectionName}</button>`;
+                    });
+                    container.innerHTML = buttons;
+                }
             })
-            .catch (() => {
-        container.innerHTML = '<p style="color: #6b7280; font-size: 14px;">Unable to load collections.</p>';
-    });
-}
+            .catch(() => {
+                container.innerHTML = '<p style="color: var(--muted); font-size: 14px;">Unable to load collections.</p>';
+            });
+    }
 
     function addToCollection(collectionId, highlightId) {
         fetch(`/collections/${collectionId}/highlights/${highlightId}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' }
-        })
-            .then(() => window.location.reload());
+        }).then(() => window.location.reload());
     }
 </script>
 {% endblock %}

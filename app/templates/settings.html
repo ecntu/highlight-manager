@@ -1,72 +1,76 @@
 {% extends "base.html" %}
 
+{% block title %}Settings{% endblock %}
+
 {% block content %}
-<h1 style="margin-bottom: 24px; font-size: 24px; font-weight: 600;">Settings</h1>
+<h1 style="font-size: 20px; font-weight: 600; color: var(--text); margin-bottom: 28px; letter-spacing: -0.02em;">Settings</h1>
 
-<div class="card">
-    <h2 class="section-title" style="margin-bottom: 16px;">Account</h2>
-    <p class="muted" style="margin-bottom: 20px; font-size: 14px;">Signed in as <strong style="color: #1a1a1a;">{{
-            current_user.username }}</strong></p>
+<!-- Account -->
+<section style="margin-bottom: 32px; padding-bottom: 32px; border-bottom: 1px solid var(--border);">
+    <h2 class="section-title" style="margin-bottom: 12px;">Account</h2>
+    <p class="muted" style="margin-bottom: 14px; font-size: 14px;">Signed in as <strong style="color: var(--text); font-weight: 600;">{{ current_user.username }}</strong></p>
     <div class="row" style="gap: 8px;">
-        <a href="/reminders" class="btn btn--ghost btn--sm" style="text-decoration: none;">Reminders</a>
-        <a href="/logout" class="btn btn--ghost btn--sm" style="text-decoration: none;">Logout</a>
-
+        <a href="/reminders" style="color: var(--muted); font-size: 13.5px; text-decoration: none; transition: color 0.15s;"
+            onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--muted)'">Reminders</a>
+        <span class="meta-divider">·</span>
+        <a href="/logout" style="color: var(--muted); font-size: 13.5px; text-decoration: none; transition: color 0.15s;"
+            onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--muted)'">Logout</a>
     </div>
-</div>
+</section>
 
-<div class="card">
-    <h2 class="section-title" style="margin-bottom: 20px;">Device API Keys</h2>
+<!-- Device API Keys -->
+<section style="margin-bottom: 32px; padding-bottom: 32px; border-bottom: 1px solid var(--border);">
+    <h2 class="section-title" style="margin-bottom: 16px;">Device API Keys</h2>
 
-    <form hx-post="/devices" hx-target="#devices-table" hx-swap="outerHTML" style="margin-bottom: 28px;">
-        <div class="row">
-            <input type="text" name="name" placeholder="Device name (e.g., iPhone, MacBook)" required style="flex: 1;">
-            <select name="scope" style="flex: 0 0 140px; width: 140px;">
+    <form hx-post="/devices" hx-target="#devices-table" hx-swap="outerHTML" style="margin-bottom: 24px;">
+        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+            <input type="text" name="name" placeholder="Device name (e.g. iPhone, MacBook)" required
+                style="flex: 1; min-width: 160px;">
+            <select name="scope" style="width: 130px; flex-shrink: 0;">
                 <option value="add_only">Add only</option>
                 <option value="read_only">Read only</option>
             </select>
-            <button type="submit" class="btn btn--ghost">
+            <button type="submit" class="btn btn--ghost btn--sm">
                 Create
-                <span class="htmx-indicator">...</span>
+                <span class="htmx-indicator" style="font-size: 11px;">...</span>
             </button>
         </div>
     </form>
 
-    <h3 style="margin-bottom: 16px; font-size: 15px; font-weight: 600; color: #1a1a1a;">Active Devices</h3>
+    <h3 style="margin-bottom: 12px; font-size: 13px; font-weight: 600; color: var(--muted); letter-spacing: 0.01em; text-transform: uppercase;">Active Devices</h3>
     {% include "partials/devices_table.html" %}
+</section>
 
-    <!-- Usage Instructions -->
-    <div style="margin-top: 32px; padding-top: 32px; border-top: 1px solid #e5e5e5;">
-        <h3 style="margin-bottom: 12px; font-size: 15px; font-weight: 600; color: #1a1a1a;">Using Device Keys</h3>
-        <p style="color: #6b7280; margin-bottom: 16px; font-size: 14px;">Send highlights from any device using:</p>
-        <pre
-            style="background: #fafafa; padding: 16px; border-radius: 8px; overflow-x: auto; font-size: 12px; border: 1px solid #e5e5e5; line-height: 1.6;">curl -X POST {{ request.url.scheme }}://{{ request.url.netloc }}/api/highlights \
+<!-- API Usage -->
+<section>
+    <h2 class="section-title" style="margin-bottom: 10px;">Using Device Keys</h2>
+    <p style="color: var(--muted); margin-bottom: 14px; font-size: 13.5px;">Send highlights from any device via the API:</p>
+    <pre style="background: var(--panel-subtle); padding: 14px 16px; border-radius: var(--radius-md); overflow-x: auto; font-size: 12px; border: 1px solid var(--border); line-height: 1.7; color: var(--muted);">curl -X POST {{ request.url.scheme }}://{{ request.url.netloc }}/api/highlights \
   -H "Authorization: Bearer YOUR_API_KEY" \
   -F "text=Your highlight text" \
   -F "note=Optional note" \
   -F "tags=tag1,tag2" \
   -F "source_url=https://example.com/article" \
-  -F "source_title=Article Title" \
-  -F "source_author=Author Name"
+  -F "source_title=Article Title"
 
-# For books, use title instead of URL:
+# For books:
 curl -X POST {{ request.url.scheme }}://{{ request.url.netloc }}/api/highlights \
   -H "Authorization: Bearer YOUR_API_KEY" \
   -F "text=Your highlight text" \
   -F "source_title=Book Title" \
   -F "source_author=Author Name"
 
-# Read-only keys can fetch highlights:
+# Read-only keys:
 curl "{{ request.url.scheme }}://{{ request.url.netloc }}/api/highlights?limit=20" \
   -H "Authorization: Bearer YOUR_READ_ONLY_KEY"</pre>
 
-        <p style="color: #6b7280; margin-top: 14px; font-size: 14px;">
-            API docs:
-            <a href="/docs" target="_blank" rel="noopener noreferrer">Swagger UI</a>
-            ·
-            <a href="/redoc" target="_blank" rel="noopener noreferrer">ReDoc</a>
-            ·
-            <a href="/openapi.json" target="_blank" rel="noopener noreferrer">OpenAPI JSON</a>
-        </p>
-    </div>
-</div>
+    <p style="color: var(--muted-2); margin-top: 12px; font-size: 13px;">
+        API docs:
+        <a href="/docs" target="_blank" rel="noopener noreferrer" style="color: var(--accent); text-decoration: none;">Swagger UI</a>
+        ·
+        <a href="/redoc" target="_blank" rel="noopener noreferrer" style="color: var(--accent); text-decoration: none;">ReDoc</a>
+        ·
+        <a href="/openapi.json" target="_blank" rel="noopener noreferrer" style="color: var(--accent); text-decoration: none;">OpenAPI JSON</a>
+    </p>
+</section>
 {% endblock %}
