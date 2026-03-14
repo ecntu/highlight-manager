@@ -41,6 +41,12 @@
                 placeholder="Author name">
         </div>
 
+        <div class="form-group">
+            <label>Highlighted Date</label>
+            <input type="date" name="highlighted_at"
+                value="{{ highlight.highlighted_at.strftime('%Y-%m-%d') if highlight.highlighted_at else '' }}">
+        </div>
+
         <div class="form-actions" style="margin-top: 16px; gap: 10px;">
             <button type="submit" class="btn btn--ghost">Save</button>
             <button type="button" id="cancel-edit-{{ highlight.id }}" hx-get="/highlights/{{ highlight.id }}"

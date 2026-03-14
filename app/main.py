@@ -587,11 +587,39 @@ def list_highlights(
         .limit(HOME_DUE_REMINDERS_LIMIT)
         .all()
     )
+    _src_name = func.coalesce(
+        Source.display_name, Source.original_name, Source.title, Source.domain, ""
+    )
+    _last_hl = func.max(func.coalesce(Highlight.highlighted_at, Highlight.created_at))
+    recent_sources = (
+        db.query(
+            Source.id,
+            Source.type,
+            _src_name.label("source_name"),
+            Source.author,
+            func.count(Highlight.id).label("highlight_count"),
+            func.sum(case((Highlight.is_favorite.is_(True), 1), else_=0)).label("favorite_highlight_count"),
+            _last_hl.label("last_highlight_at"),
+        )
+        .outerjoin(
+            Highlight,
+            (Highlight.source_id == Source.id) & (Highlight.user_id == user.id),
+        )
+        .filter(Source.user_id == user.id)
+        .group_by(
+            Source.id, Source.type, Source.display_name, Source.original_name,
+            Source.title, Source.domain, Source.author, Source.created_at,
+        )
+        .order_by(func.coalesce(_last_hl, Source.created_at).desc(), _src_name.asc())
+        .limit(20)
+        .all()
+    )
     return templates.TemplateResponse(
         "home.html",
         {
             "request": request,
             "highlights": highlights,
+            "recent_sources": recent_sources,
             "due_reminders": due_reminders,
             "current_user": user,
         },
@@ -1090,7 +1118,7 @@ def api_search_sources(
     favorite_highlight_count = func.sum(
         case((Highlight.is_favorite.is_(True), 1), else_=0)
     )
-    last_highlight_at = func.max(Highlight.created_at)
+    last_highlight_at = func.max(func.coalesce(Highlight.highlighted_at, Highlight.created_at))
     recent_marker = func.coalesce(last_highlight_at, Source.created_at)
 
     query = (
@@ -1436,6 +1464,7 @@ def update_highlight(
     source_url: Optional[str] = Form(None),
     source_title: Optional[str] = Form(None),
     source_author: Optional[str] = Form(None),
+    highlighted_at: Optional[str] = Form(None),
     user: User = Depends(require_user),
     db: Session = Depends(get_db),
 ):
@@ -1456,6 +1485,12 @@ def update_highlight(
     highlight.text = text
     highlight.note = note
     highlight.updated_at = datetime.utcnow()
+
+    highlighted_at = highlighted_at.strip() if highlighted_at else None
+    if highlighted_at:
+        highlight.highlighted_at = datetime.strptime(highlighted_at, "%Y-%m-%d")
+    else:
+        highlight.highlighted_at = None
 
     # Convert empty strings to None
     source_url = source_url.strip() if source_url else None
@@ -1744,6 +1779,7 @@ def sources_page(
     sort: Optional[str] = None,
     order_by: Literal["recent", "highlights", "favorites", "name"] = "recent",
     order_dir: Optional[Literal["asc", "desc"]] = None,
+    device_id: Optional[str] = None,
     user: User = Depends(require_user),
     db: Session = Depends(get_db),
 ):
@@ -1781,7 +1817,7 @@ def sources_page(
     favorite_highlight_count = func.sum(
         case((Highlight.is_favorite.is_(True), 1), else_=0)
     )
-    last_highlight_at = func.max(Highlight.created_at)
+    last_highlight_at = func.max(func.coalesce(Highlight.highlighted_at, Highlight.created_at))
     recent_marker = func.coalesce(last_highlight_at, Source.created_at)
 
     query = (
@@ -1817,6 +1853,8 @@ def sources_page(
         )
     if source_type:
         query = query.filter(Source.type == SourceType(source_type))
+    if device_id:
+        query = query.filter(Highlight.device_id == device_id)
 
     query = query.group_by(
         Source.id,
@@ -1841,6 +1879,16 @@ def sources_page(
         query = query.order_by(order_expr.desc(), source_name.asc())
 
     sources = query.all()
+    devices = (
+        db.query(Device)
+        .filter(
+            Device.user_id == user.id,
+            Device.revoked_at.is_(None),
+            Device.scope != DeviceScope.READ_ONLY,
+        )
+        .order_by(Device.name.asc())
+        .all()
+    )
     return templates.TemplateResponse(
         "sources.html",
         {
@@ -1852,6 +1900,8 @@ def sources_page(
             "order_by": order_by,
             "order_dir": order_dir,
             "sort": f"{order_by}-{order_dir}",
+            "devices": devices,
+            "device_id": device_id or "",
         },
     )
 

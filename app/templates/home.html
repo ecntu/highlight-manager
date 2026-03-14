@@ -68,15 +68,80 @@
 </div>
 {% endif %}
 
-<!-- Recent Highlights -->
-<div class="row-between compact-header" style="margin-bottom: 8px;">
-    <h2 class="section-title muted-1">Recent Highlights</h2>
-    <small class="section-meta">{{ highlights|length }} total</small>
+<!-- Recent Highlights / Sources -->
+<div class="row-between compact-header" style="margin-bottom: 12px;">
+    <div class="row" style="gap: 10px; align-items: center;">
+        <h2 class="section-title" style="margin: 0;">Recent</h2>
+        <div class="row" style="gap: 4px;">
+            <button id="tab-highlights" onclick="switchRecentTab('highlights')"
+                class="pill pill--blue" style="cursor: pointer; border: none;">Highlights</button>
+            <button id="tab-sources" onclick="switchRecentTab('sources')"
+                class="pill" style="cursor: pointer; border: none; background: transparent; color: #6b7280;">Sources</button>
+        </div>
+    </div>
+    <a id="recent-show-more" href="/search" class="section-meta" style="text-decoration: none;">Show more</a>
 </div>
 
 <div id="highlights-list">
     {% include "partials/highlights_list.html" %}
 </div>
+
+<div id="sources-list" style="display: none;">
+    {% if recent_sources %}
+    <div class="stack">
+        {% for source in recent_sources %}
+        <div class="list-card clickable" style="overflow: hidden;" onclick="window.location='/sources/{{ source.id }}'">
+            <div class="row-between" style="align-items: start;">
+                <div style="flex: 1; min-width: 0;">
+                    <h3 style="font-size: 15px; margin-bottom: 6px; font-weight: 600; overflow-wrap: break-word; word-break: break-word; min-width: 0;">{{ source.source_name }}</h3>
+                    {% if source.author %}
+                    <p class="muted" style="font-size: 13px; margin-bottom: 8px;">{{ source.author }}</p>
+                    {% endif %}
+                    <div class="row" style="gap: 12px; font-size: 13px; flex-wrap: wrap;">
+                        <span class="muted-2" style="text-transform: capitalize;">{{ source.type.value }}</span>
+                        <span class="meta-divider">·</span>
+                        <span class="muted-2">{{ source.highlight_count }} highlight{% if source.highlight_count != 1 %}s{% endif %}</span>
+                        {% if source.favorite_highlight_count > 0 %}
+                        <span class="meta-divider">·</span>
+                        <span class="muted">♥ {{ source.favorite_highlight_count }}</span>
+                        {% endif %}
+                        {% if source.last_highlight_at %}
+                        <span class="meta-divider">·</span>
+                        <span class="muted-2">{{ source.last_highlight_at.strftime('%b %Y') }}</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <p class="muted" style="text-align: center; padding: 40px 0;">No sources yet.</p>
+    {% endif %}
+</div>
+
+<script>
+    function switchRecentTab(tab) {
+        const showingHighlights = tab === 'highlights';
+        document.getElementById('highlights-list').style.display = showingHighlights ? '' : 'none';
+        document.getElementById('sources-list').style.display = showingHighlights ? 'none' : '';
+        document.getElementById('recent-show-more').href = showingHighlights ? '/search' : '/sources';
+
+        const tabHL = document.getElementById('tab-highlights');
+        const tabSrc = document.getElementById('tab-sources');
+        if (showingHighlights) {
+            tabHL.className = 'pill pill--blue';
+            tabHL.style.cssText = 'cursor: pointer; border: none;';
+            tabSrc.className = 'pill';
+            tabSrc.style.cssText = 'cursor: pointer; border: none; background: transparent; color: #6b7280;';
+        } else {
+            tabSrc.className = 'pill pill--blue';
+            tabSrc.style.cssText = 'cursor: pointer; border: none;';
+            tabHL.className = 'pill';
+            tabHL.style.cssText = 'cursor: pointer; border: none; background: transparent; color: #6b7280;';
+        }
+    }
+</script>
 
 <script>
     function showExtraFields() {
