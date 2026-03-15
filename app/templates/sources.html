@@ -54,22 +54,15 @@
         <div>
             {% for source in sources %}
             <a href="/sources/{{ source.id }}" style="text-decoration: none; color: inherit; display: block;">
-                <div style="padding: 12px 0; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: baseline; gap: 16px; transition: color 0.15s;">
-                    <div style="flex: 1; min-width: 0; overflow-wrap: break-word; word-break: break-word;">
-                        <span style="font-size: 15px; font-weight: 500; color: var(--text);">{{ source.source_name }}</span>
-                        {% if source.author %}
-                        <span class="muted-2" style="font-size: 13px; margin-left: 8px;">{{ source.author }}</span>
-                        {% endif %}
+                <div style="padding: 11px 0; border-bottom: 1px solid var(--border); transition: opacity 0.15s;" onmouseover="this.style.opacity='0.7'" onmouseout="this.style.opacity='1'">
+                    <div style="display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 3px;">
+                        <span style="font-size: 15px; font-weight: 500; color: var(--text); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ source.source_name }}</span>
+                        <span class="muted-2" style="font-size: 12.5px; flex-shrink: 0; white-space: nowrap;">{{ source.highlight_count }} hl{% if source.favorite_highlight_count > 0 %} · ♥ {{ source.favorite_highlight_count }}{% endif %}</span>
                     </div>
-                    <div style="display: flex; gap: 10px; font-size: 12.5px; flex-shrink: 0; align-items: center; white-space: nowrap;">
+                    <div style="display: flex; gap: 8px; font-size: 12px; flex-wrap: wrap;">
+                        {% if source.author %}<span class="muted">{{ source.author }}</span>{% endif %}
                         <span class="muted-2" style="text-transform: capitalize;">{{ source.type.value }}</span>
-                        <span class="muted-2">{{ source.highlight_count }} hl</span>
-                        {% if source.favorite_highlight_count > 0 %}
-                        <span style="color: var(--accent);">♥ {{ source.favorite_highlight_count }}</span>
-                        {% endif %}
-                        {% if source.last_highlight_at %}
-                        <span class="muted-2">{{ source.last_highlight_at.strftime('%b %Y') }}</span>
-                        {% endif %}
+                        {% if source.last_highlight_at %}<span class="muted-2">{{ source.last_highlight_at.strftime('%b %Y') }}</span>{% endif %}
                     </div>
                 </div>
             </a>
