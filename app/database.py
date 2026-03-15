@@ -284,7 +284,20 @@ def migrate_schema():
             conn.execute(text("DROP TABLE IF EXISTS collections"))
 
     if "reminders" in tables:
+        reminder_columns = {column["name"] for column in inspector.get_columns("reminders")}
         with engine.begin() as conn:
+            if "notification_sent_at" not in reminder_columns:
+                conn.execute(
+                    text("ALTER TABLE reminders ADD COLUMN notification_sent_at DATETIME")
+                )
+            if "notification_last_attempt_at" not in reminder_columns:
+                conn.execute(
+                    text(
+                        "ALTER TABLE reminders ADD COLUMN notification_last_attempt_at DATETIME"
+                    )
+                )
+            if "notification_error" not in reminder_columns:
+                conn.execute(text("ALTER TABLE reminders ADD COLUMN notification_error TEXT"))
             conn.execute(text("DROP INDEX IF EXISTS ix_reminders_user_highlight_unique"))
             conn.execute(
                 text(
@@ -296,6 +309,43 @@ def migrate_schema():
                 text(
                     "CREATE INDEX IF NOT EXISTS ix_reminders_user_remind_at "
                     "ON reminders (user_id, remind_at)"
+                )
+            )
+            conn.execute(
+                text(
+                    "CREATE INDEX IF NOT EXISTS ix_reminders_user_notification_sent "
+                    "ON reminders (user_id, notification_sent_at)"
+                )
+            )
+
+    if "ntfy_config" in tables:
+        ntfy_columns = {column["name"] for column in inspector.get_columns("ntfy_config")}
+        with engine.begin() as conn:
+            if "enabled" not in ntfy_columns:
+                conn.execute(
+                    text("ALTER TABLE ntfy_config ADD COLUMN enabled BOOLEAN DEFAULT 0")
+                )
+            if "server_url" not in ntfy_columns:
+                conn.execute(
+                    text(
+                        "ALTER TABLE ntfy_config ADD COLUMN server_url TEXT DEFAULT 'https://ntfy.sh'"
+                    )
+                )
+            if "topic" not in ntfy_columns:
+                conn.execute(text("ALTER TABLE ntfy_config ADD COLUMN topic TEXT"))
+            if "access_token" not in ntfy_columns:
+                conn.execute(text("ALTER TABLE ntfy_config ADD COLUMN access_token TEXT"))
+            if "created_at" not in ntfy_columns:
+                conn.execute(text("ALTER TABLE ntfy_config ADD COLUMN created_at DATETIME"))
+            if "updated_at" not in ntfy_columns:
+                conn.execute(text("ALTER TABLE ntfy_config ADD COLUMN updated_at DATETIME"))
+            conn.execute(
+                text(
+                    "UPDATE ntfy_config "
+                    "SET enabled = COALESCE(enabled, 0), "
+                    "server_url = COALESCE(server_url, 'https://ntfy.sh'), "
+                    "created_at = COALESCE(created_at, CURRENT_TIMESTAMP), "
+                    "updated_at = COALESCE(updated_at, CURRENT_TIMESTAMP)"
                 )
             )
 

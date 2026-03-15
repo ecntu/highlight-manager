@@ -20,6 +20,7 @@ from app.models import (
     Device,
     Source,
     Note,
+    NtfyConfig,
     Tag,
     SourceType,
     HighlightStatus,
@@ -201,6 +202,56 @@ def get_or_create_web_device(
         db.refresh(device)
 
     return device
+
+
+def get_or_create_ntfy_config(user_id: str, db: Session) -> NtfyConfig:
+    config = db.query(NtfyConfig).filter(NtfyConfig.user_id == user_id).first()
+    if config:
+        return config
+    config = NtfyConfig(user_id=user_id)
+    db.add(config)
+    db.commit()
+    db.refresh(config)
+    return config
+
+
+def reminder_delivery_status(reminder: Reminder, now: Optional[datetime] = None) -> str:
+    if reminder.notification_sent_at:
+        return "sent"
+    if reminder.notification_error:
+        return "failed"
+    if now and reminder.remind_at <= now:
+        return "pending"
+    return "scheduled"
+
+
+def build_settings_context(request: Request, user: User, db: Session, **extra: Any) -> dict[str, Any]:
+    get_or_create_web_device(user.id, db, backfill=True)
+    ntfy_config = get_or_create_ntfy_config(user.id, db)
+    devices = (
+        db.query(Device)
+        .filter(Device.user_id == user.id, Device.revoked_at.is_(None))
+        .all()
+    )
+    reminder_statuses = (
+        db.query(Reminder)
+        .options(joinedload(Reminder.highlight).joinedload(Highlight.source))
+        .filter(Reminder.user_id == user.id)
+        .order_by(Reminder.remind_at.desc())
+        .limit(25)
+        .all()
+    )
+    context = {
+        "request": request,
+        "current_user": user,
+        "devices": devices,
+        "ntfy_config": ntfy_config,
+        "reminder_statuses": reminder_statuses,
+        "now": datetime.utcnow(),
+        "reminder_delivery_status": reminder_delivery_status,
+    }
+    context.update(extra)
+    return context
 
 
 def cleanup_orphaned_sources(user_id: str, db: Session):
@@ -779,15 +830,9 @@ def logout(request: Request):
 def settings_page(
     request: Request, user: User = Depends(require_user), db: Session = Depends(get_db)
 ):
-    get_or_create_web_device(user.id, db, backfill=True)
-    devices = (
-        db.query(Device)
-        .filter(Device.user_id == user.id, Device.revoked_at.is_(None))
-        .all()
-    )
     return templates.TemplateResponse(
         "settings.html",
-        {"request": request, "current_user": user, "devices": devices},
+        build_settings_context(request, user, db),
     )
 
 
@@ -833,13 +878,13 @@ def create_device(
 
     return templates.TemplateResponse(
         "settings.html",
-        {
-            "request": request,
-            "current_user": user,
-            "devices": devices,
-            "new_api_key": api_key,
-            "new_api_key_device_name": device.name,
-        },
+        build_settings_context(
+            request,
+            user,
+            db,
+            new_api_key=api_key,
+            new_api_key_device_name=device.name,
+        ),
     )
 
 
@@ -889,13 +934,13 @@ def roll_device_key(
         )
     return templates.TemplateResponse(
         "settings.html",
-        {
-            "request": request,
-            "current_user": user,
-            "devices": devices,
-            "new_api_key": api_key,
-            "new_api_key_device_name": device.name,
-        },
+        build_settings_context(
+            request,
+            user,
+            db,
+            new_api_key=api_key,
+            new_api_key_device_name=device.name,
+        ),
     )
 
 
@@ -919,6 +964,41 @@ def delete_device(
 
     if is_htmx(request):
         return HTMLResponse("", status_code=200)
+    return RedirectResponse(url="/settings", status_code=303)
+
+
+@app.post("/settings/ntfy")
+def update_ntfy_settings(
+    request: Request,
+    enabled: Optional[str] = Form(None),
+    server_url: Optional[str] = Form(None),
+    topic: Optional[str] = Form(None),
+    access_token: Optional[str] = Form(None),
+    user: User = Depends(require_user),
+    db: Session = Depends(get_db),
+):
+    config = get_or_create_ntfy_config(user.id, db)
+
+    normalized_server_url = (server_url or "").strip() or "https://ntfy.sh"
+    normalized_server_url = normalized_server_url.rstrip("/")
+    normalized_topic = (topic or "").strip() or None
+    normalized_access_token = (access_token or "").strip() or None
+    is_enabled = (enabled or "").strip().lower() in {"1", "true", "yes", "on"}
+
+    if is_enabled and not normalized_topic:
+        raise HTTPException(status_code=400, detail="Topic is required when ntfy is enabled")
+
+    config.enabled = is_enabled
+    config.server_url = normalized_server_url
+    config.topic = normalized_topic
+    config.access_token = normalized_access_token
+    config.updated_at = datetime.utcnow()
+    db.commit()
+
+    if is_htmx(request):
+        response = Response(status_code=200)
+        response.headers["HX-Redirect"] = "/settings"
+        return response
     return RedirectResponse(url="/settings", status_code=303)
 
 

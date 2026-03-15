@@ -56,6 +56,7 @@ class User(Base):
     reminders = relationship("Reminder", back_populates="user")
     tags = relationship("Tag", back_populates="user")
     digest_config = relationship("DigestConfig", back_populates="user", uselist=False)
+    ntfy_config = relationship("NtfyConfig", back_populates="user", uselist=False)
 
 
 class Device(Base):
@@ -252,6 +253,9 @@ class Reminder(Base):
         String(36), ForeignKey("highlights.id", ondelete="CASCADE"), nullable=False
     )
     remind_at = Column(DateTime, nullable=False)
+    notification_sent_at = Column(DateTime, nullable=True)
+    notification_last_attempt_at = Column(DateTime, nullable=True)
+    notification_error = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     user = relationship("User", back_populates="reminders")
@@ -260,7 +264,26 @@ class Reminder(Base):
     __table_args__ = (
         Index("ix_reminders_user_highlight", "user_id", "highlight_id"),
         Index("ix_reminders_user_remind_at", "user_id", "remind_at"),
+        Index("ix_reminders_user_notification_sent", "user_id", "notification_sent_at"),
     )
+
+
+class NtfyConfig(Base):
+    __tablename__ = "ntfy_config"
+
+    user_id = Column(
+        String(36), ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
+    )
+    enabled = Column(Boolean, default=False, nullable=False)
+    server_url = Column(Text, default="https://ntfy.sh", nullable=False)
+    topic = Column(Text, nullable=True)
+    access_token = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(
+        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False
+    )
+
+    user = relationship("User", back_populates="ntfy_config")
 
 
 class HighlightTag(Base):
