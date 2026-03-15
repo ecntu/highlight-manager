@@ -1,22 +1,11 @@
 <div class="list-card">
-
     <a href="/highlights/{{ highlight.id }}" style="text-decoration: none; color: inherit; display: block; margin-bottom: 10px;">
-        <p style="font-family: var(--font-serif); font-size: 16px; line-height: 1.65; color: var(--text-strong); margin: 0;">{{ highlight.text }}</p>
-
-        {% if highlight.note %}
-        <p style="font-size: 13.5px; line-height: 1.5; color: var(--muted); font-style: italic; margin: 7px 0 0 0;">
-            {% if highlight.note|length > 200 %}
-            {{ highlight.note[:200] }}...
-            {% else %}
-            {{ highlight.note }}
-            {% endif %}
-        </p>
-        {% endif %}
+        <p style="font-family: var(--font-serif); font-size: 16px; line-height: 1.65; color: var(--text-strong); margin: 0;">{{ highlight.text | highlight_matches(search_query or '') | safe }}</p>
     </a>
 
     <div class="row-between" style="font-size: 12.5px;">
         <div class="row" style="gap: 5px; flex-wrap: wrap;">
-            {% if highlight.source %}
+            {% if highlight.source and not hide_source %}
             <a href="/search?source_id={{ highlight.source.id }}"
                 style="color: var(--muted); text-decoration: none; font-weight: 500; transition: color 0.15s;"
                 onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--muted)'">
@@ -24,18 +13,15 @@
             </a>
             {% endif %}
 
-            {% if highlight.collections %}
-            {% if highlight.source %}<span class="meta-divider">·</span>{% endif %}
-            {% for collection in highlight.collections %}
-            <a href="/search?collection_id={{ collection.id }}" class="pill pill--amber">{{ collection.name }}</a>
-            {% endfor %}
-            {% endif %}
-
             {% if highlight.tags %}
-            {% if highlight.source or highlight.collections %}<span class="meta-divider">·</span>{% endif %}
+            {% if highlight.source and not hide_source %}<span class="meta-divider">·</span>{% endif %}
             {% for tag in highlight.tags %}
             <a href="/search?tag={{ tag.name }}" class="pill pill--blue">{{ tag.name }}</a>
             {% endfor %}
+            {% endif %}
+            {% if highlight.notes %}
+            {% if highlight.tags or (highlight.source and not hide_source) %}<span class="meta-divider">·</span>{% endif %}
+            <span class="muted-2">{{ highlight.notes|length }} note{% if highlight.notes|length != 1 %}s{% endif %}</span>
             {% endif %}
         </div>
 

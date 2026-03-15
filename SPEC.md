@@ -10,7 +10,7 @@ A personal highlight manager that captures highlights across media, preserves so
 * Preserve source context (source metadata + location + capture time)
 * Multi-device capture via simple API calls (device API key auth)
 * Retrieval via full-text search (semantic optional later)
-* Lightweight linking + collections
+* Lightweight linking + flexible notes
 * Resurfacing via daily/weekly digests
 
 ## 2) Non-goals (v1)
@@ -85,14 +85,13 @@ A personal highlight manager that captures highlights across media, preserves so
 ### Organize
 
 * Tag highlights
-* Add note (“why it matters”)
+* Add notes to highlights and sources
 * Link highlights
-* Add to collections
 
 ### Retrieve
 
-* Full-text search across highlight `text` + `note` + source metadata
-* Filter by tags/source type/date/collection
+* Full-text search across highlight `text` + note bodies + source metadata
+* Filter by tags/source type/date/device/status/favorite
 
 ### Resurface
 
@@ -104,12 +103,11 @@ A personal highlight manager that captures highlights across media, preserves so
 ## 6) UX Requirements (v1 screens)
 
 1. Home: quick add, today’s resurfaced, recent highlights
-2. Highlight detail: edit text/note/tags, source info, links
+2. Highlight detail: edit text/tags, source info, reminders, and notes
 3. Sources: list + source detail
 4. Search: query + filters
-5. Collections: create + manage membership
-6. Import/Export
-7. Settings: digest config + device key management (create/revoke)
+5. Import/Export
+6. Settings: digest config + device key management (create/revoke)
 
 ---
 
@@ -172,7 +170,8 @@ Indexes: `(user_id, domain)`, `(user_id, title)`
 * `source_id` fk nullable
 * `device_id` fk nullable (if created via device key)
 * `text` text required
-* `note` text nullable
+* `original_text` text nullable
+* `import_fingerprint` text nullable
 * `url` text nullable (for web highlights - full article URL)
 * `page_title` text nullable (for web highlights - article title)
 * `page_author` text nullable (for web highlights - article author)
@@ -184,7 +183,7 @@ Indexes: `(user_id, domain)`, `(user_id, title)`
 * `highlighted_at` nullable (original time if known)
 
 Indexes: `(user_id, created_at desc)`, `(user_id, source_id)`, `(user_id, is_favorite)`, `(user_id, device_id)`
-Search: Postgres FTS index on `(text, note)` via `tsvector`
+Search: Postgres FTS index on `text`, plus note bodies via join/subquery
 
 #### `tags`
 
@@ -199,20 +198,17 @@ Search: Postgres FTS index on `(text, note)` via `tsvector`
 * `tag_id` fk
   PK `(highlight_id, tag_id)`
 
-#### `collections`
+#### `notes`
 
 * `id` uuid pk
 * `user_id` fk
-* `name` text
-* `description` text nullable
+* `highlight_id` fk nullable
+* `source_id` fk nullable
+* `body` text required
+* `kind` text nullable
 * `created_at`
-
-#### `collection_items`
-
-* `collection_id` fk
-* `highlight_id` fk
-* `added_at`
-  PK `(collection_id, highlight_id)`
+* `updated_at`
+  Constraints: exactly one parent, so either `highlight_id` or `source_id` is set, never both
 
 #### `highlight_links`
 
@@ -269,33 +265,35 @@ Search: Postgres FTS index on `(text, note)` via `tsvector`
 * `GET /highlights` - list highlights with filters (`?q=search&tag=name&source_id=uuid&status=active&favorite=true`)
 * `POST /highlights` - create new highlight (auth: UI session or device key)
 * `GET /highlights/{id}` - get highlight detail
-* `PATCH /highlights/{id}` - update highlight (text, note, tags, source) *(UI only)*
+* `PATCH /highlights/{id}` - update highlight (text, tags, source) *(UI only)*
 * `DELETE /highlights/{id}` - archive highlight *(UI only)*
 * `PUT /highlights/{id}/favorite` - toggle favorite status *(UI only)*
+* `POST /highlights/{id}/notes` - add note to highlight *(UI only)*
+* `GET /highlights/{id}/notes` - render highlight notes section *(UI only)*
 
 **Device API** (same endpoint, device key auth):
 * `POST /api/highlights` - simplified ingest
   * Form fields: `text` (required), `note`, `tags` (csv), `source_url`, `source_title`, `source_author`, `location` (json)
-  * Source matching: if `source_url` provided, match by URL; otherwise match by `source_title`
+  * `note` creates the initial note row for the imported highlight
+  * Source matching: if `source_url` provided, match by domain; otherwise match by `source_title`
+* `POST /api/highlights/moon-reader` - import a Moon+ Reader highlight payload
 
 ### Sources
 
 * `GET /sources` - list all sources (`?type=book&q=search`)
 * `GET /sources/{id}` - get source detail with highlights
+* `POST /sources/{id}/notes` - add note to source *(UI only)*
+* `GET /sources/{id}/notes` - render source notes section *(UI only)*
 
 ### Tags
 
 * `GET /tags` - list all tags (`?q=search`)
 
-### Collections
+### Notes
 
-* `GET /collections` - list collections
-* `POST /collections` - create collection
-* `GET /collections/{id}` - get collection detail
-* `PATCH /collections/{id}` - update collection
-* `DELETE /collections/{id}` - delete collection
-* `PUT /collections/{id}/highlights/{highlight_id}` - add highlight to collection
-* `DELETE /collections/{id}/highlights/{highlight_id}` - remove highlight from collection
+* `GET /notes/{id}/edit` - render inline note edit form *(UI only)*
+* `PATCH /notes/{id}` - update note *(UI only)*
+* `DELETE /notes/{id}` - delete note *(UI only)*
 
 ### Links
 
@@ -354,6 +352,6 @@ Endpoint `POST /api/highlights/{id}/review` updates those.
 1. FastAPI + Postgres + migrations + basic UI auth
 2. Device keys: create/list/revoke + ingest endpoint
 3. Highlights CRUD + tags + sources + FTS search
-4. Links + collections
+4. Links + notes
 5. Import/export
 6. Digests

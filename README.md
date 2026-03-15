@@ -27,3 +27,7 @@ Visit http://localhost:8000
 ## TODOs
 - [ ] resurfacing features (random, digests)
 - [ ] semantic search
+- [ ] merge sources
+- [ ] reminder ntfy notifications
+- [ ] web clipper
+- [ ] android clipper

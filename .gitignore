@@ -1,7 +1,7 @@
 # Custom
 .env
 .vscode/
-*.db
+*.db*
 tmp*
 
 # Byte-compiled / optimized / DLL files

@@ -52,9 +52,9 @@ class User(Base):
     devices = relationship("Device", back_populates="user")
     sources = relationship("Source", back_populates="user")
     highlights = relationship("Highlight", back_populates="user")
+    notes = relationship("Note", back_populates="user")
     reminders = relationship("Reminder", back_populates="user")
     tags = relationship("Tag", back_populates="user")
-    collections = relationship("Collection", back_populates="user")
     digest_config = relationship("DigestConfig", back_populates="user", uselist=False)
 
 
@@ -107,6 +107,12 @@ class Source(Base):
 
     user = relationship("User", back_populates="sources")
     highlights = relationship("Highlight", back_populates="source")
+    notes = relationship(
+        "Note",
+        back_populates="source",
+        cascade="all, delete-orphan",
+        order_by="desc(Note.created_at)",
+    )
 
     __table_args__ = (
         Index("ix_sources_user_domain", "user_id", "domain"),
@@ -139,9 +145,7 @@ class Highlight(Base):
         String(36), ForeignKey("devices.id", ondelete="SET NULL"), nullable=True
     )
     text = Column(Text, nullable=False)
-    note = Column(Text, nullable=True)
     original_text = Column(Text, nullable=True)
-    original_note = Column(Text, nullable=True)
     import_fingerprint = Column(Text, nullable=True)
     # Web-specific fields (nullable, only used when source.type == 'web')
     url = Column(Text, nullable=True)  # Full article URL
@@ -162,10 +166,13 @@ class Highlight(Base):
     user = relationship("User", back_populates="highlights")
     source = relationship("Source", back_populates="highlights")
     device = relationship("Device", back_populates="highlights")
-    tags = relationship("Tag", secondary="highlight_tags", back_populates="highlights")
-    collections = relationship(
-        "Collection", secondary="collection_items", back_populates="highlights"
+    notes = relationship(
+        "Note",
+        back_populates="highlight",
+        cascade="all, delete-orphan",
+        order_by="desc(Note.created_at)",
     )
+    tags = relationship("Tag", secondary="highlight_tags", back_populates="highlights")
     reminders = relationship(
         "Reminder",
         back_populates="highlight",
@@ -179,6 +186,40 @@ class Highlight(Base):
         Index("ix_highlights_user_favorite", "user_id", "is_favorite"),
         Index("ix_highlights_user_device", "user_id", "device_id"),
         Index("ix_highlights_user_import_fingerprint", "user_id", "import_fingerprint"),
+    )
+
+    @property
+    def primary_note(self):
+        return self.notes[0] if self.notes else None
+
+
+class Note(Base):
+    __tablename__ = "notes"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(
+        String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    highlight_id = Column(
+        String(36), ForeignKey("highlights.id", ondelete="CASCADE"), nullable=True
+    )
+    source_id = Column(
+        String(36), ForeignKey("sources.id", ondelete="CASCADE"), nullable=True
+    )
+    body = Column(Text, nullable=False)
+    kind = Column(String(50), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(
+        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False
+    )
+
+    user = relationship("User", back_populates="notes")
+    highlight = relationship("Highlight", back_populates="notes")
+    source = relationship("Source", back_populates="notes")
+
+    __table_args__ = (
+        Index("ix_notes_user_highlight", "user_id", "highlight_id"),
+        Index("ix_notes_user_source", "user_id", "source_id"),
     )
 
 
@@ -233,39 +274,6 @@ class HighlightTag(Base):
     tag_id = Column(
         String(36), ForeignKey("tags.id", ondelete="CASCADE"), primary_key=True
     )
-
-
-class Collection(Base):
-    __tablename__ = "collections"
-
-    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    user_id = Column(
-        String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
-    )
-    name = Column(Text, nullable=False)
-    description = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-
-    user = relationship("User", back_populates="collections")
-    highlights = relationship(
-        "Highlight", secondary="collection_items", back_populates="collections"
-    )
-
-
-class CollectionItem(Base):
-    __tablename__ = "collection_items"
-
-    collection_id = Column(
-        String(36),
-        ForeignKey("collections.id", ondelete="CASCADE"),
-        primary_key=True,
-    )
-    highlight_id = Column(
-        String(36),
-        ForeignKey("highlights.id", ondelete="CASCADE"),
-        primary_key=True,
-    )
-    added_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
 
 class HighlightLink(Base):

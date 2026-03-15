@@ -1,11 +1,13 @@
 <div id="reminders-panel">
     <details {% if keep_open %}open{% endif %}
-        style="border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--panel); overflow: hidden;">
+        style="border: 1px solid var(--border); border-radius: var(--radius-md); overflow: hidden;">
         <summary style="list-style: none; cursor: pointer; padding: 11px 14px; display: flex; justify-content: space-between; align-items: center;">
             <span style="font-size: 13px; font-weight: 500; color: var(--muted);">Reminders ({{ highlight.reminders|length }})</span>
-            <span style="font-size: 16px; line-height: 1; color: var(--muted-2);">+</span>
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="color: var(--muted-2); flex-shrink: 0; transition: transform 0.2s;">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+            </svg>
         </summary>
-        <div style="padding: 12px 14px; border-top: 1px solid var(--border);">
+        <div style="padding: 12px 14px;">
             <div style="margin-bottom: 12px;">
                 <div class="reminder-controls">
                     <form hx-post="/highlights/{{ highlight.id }}/reminders" hx-target="#reminders-panel" hx-swap="outerHTML">
@@ -20,7 +22,7 @@
                     <form hx-post="/highlights/{{ highlight.id }}/reminders" hx-target="#reminders-panel" hx-swap="outerHTML">
                         <input type="hidden" name="keep_open" value="1">
                         <div class="reminder-custom">
-                            <input type="date" name="remind_on" required class="reminder-date-input">
+                            <input type="date" name="remind_on" required class="reminder-date-input" style="background: var(--panel-subtle);">
                             <button type="submit" class="btn btn--ghost btn--sm">Add date</button>
                         </div>
                     </form>
@@ -31,7 +33,7 @@
             <div class="stack" style="gap: 6px;">
                 {% for reminder in highlight.reminders %}
                 <div id="highlight-reminder-{{ reminder.id }}"
-                    class="list-card reminder-card reminder-card--inline-mobile" style="padding: 9px 12px;">
+                    class="list-card reminder-card reminder-card--inline-mobile" style="padding: 9px 12px; background: var(--panel-subtle);">
                     <div class="reminder-card-content">
                         <span class="muted" style="font-size: 13px;">{{ reminder.remind_at.strftime('%b %d, %Y') }}</span>
                     </div>

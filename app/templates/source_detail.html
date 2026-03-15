@@ -46,6 +46,8 @@
     </div>
 </div>
 
+{% include 'partials/source_notes.html' %}
+
 <div class="row-between" style="margin-bottom: 14px; gap: 10px; flex-wrap: wrap;">
     <h3 class="section-title" style="margin: 0;">Highlights</h3>
     <a href="/search?source_id={{ source.id }}" style="color: var(--muted-2); font-size: 13px; text-decoration: none; transition: color 0.15s;"
@@ -61,27 +63,8 @@
 {% if highlights %}
 <div id="highlights-list" class="stack">
     {% for highlight in highlights %}
-    <div class="list-card clickable" onclick="window.location='/highlights/{{ highlight.id }}'">
-        <div class="row-between" style="align-items: start; margin-bottom: 8px;">
-            <p style="font-family: var(--font-serif); font-size: 15px; line-height: 1.6; flex: 1; margin: 0; color: var(--text-strong);">{{ highlight.text }}</p>
-            {% if highlight.is_favorite %}
-            <span style="margin-left: 10px; color: var(--accent); flex-shrink: 0;">♥</span>
-            {% endif %}
-        </div>
-        {% if highlight.note %}
-        <div style="background: var(--panel-subtle); padding: 9px 12px; border-left: 2px solid var(--border-strong); margin-bottom: 8px; font-size: 13.5px; color: var(--muted); font-style: italic; border-radius: 0 var(--radius-sm) var(--radius-sm) 0;">
-            {{ highlight.note }}
-        </div>
-        {% endif %}
-        <div class="row" style="gap: 12px; font-size: 12.5px;">
-            <small class="muted-2">{{ (highlight.highlighted_at or highlight.created_at).strftime('%b %d, %Y') }}</small>
-            {% if highlight.tags %}
-            <small class="muted-2">
-                {% for tag in highlight.tags %}#{{ tag.name }}{% if not loop.last %}, {% endif %}{% endfor %}
-            </small>
-            {% endif %}
-        </div>
-    </div>
+    {% set hide_source = true %}
+    {% include "partials/highlight_item.html" %}
     {% endfor %}
 </div>
 {% else %}

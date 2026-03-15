@@ -1,0 +1,31 @@
+<style>
+    #highlight-notes details[open] .panel-chevron { transform: rotate(180deg); }
+    #highlight-notes .panel-chevron { transition: transform 0.2s; }
+</style>
+<div id="highlight-notes" style="margin-top: 10px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--panel-subtle);">
+    <details open style="overflow: hidden;">
+        <summary style="list-style: none; cursor: pointer; padding: 11px 14px; display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-size: 13px; font-weight: 500; color: var(--muted);">Notes ({{ highlight.notes|length }})</span>
+            <svg class="panel-chevron" xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="color: var(--muted-2); flex-shrink: 0;">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+            </svg>
+        </summary>
+        <div style="padding: 12px 14px; border-top: 1px solid var(--border);">
+            {% if highlight.notes %}
+            <div style="margin-bottom: 14px; display: grid; gap: 12px;">
+                {% for note in highlight.notes %}
+                {% include 'partials/note_item.html' %}
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <form hx-post="/highlights/{{ highlight.id }}/notes" hx-target="#highlight-notes" hx-swap="outerHTML">
+                <textarea name="body" rows="2" placeholder="Add a note…" style="font-size: 13.5px; resize: vertical;"
+                    oninput="this.nextElementSibling.style.display = this.value.trim() ? 'flex' : 'none'"></textarea>
+                <div class="row" style="justify-content: flex-end; margin-top: 6px; display: none;">
+                    <button type="submit" class="btn btn--ghost btn--sm">Add</button>
+                </div>
+            </form>
+        </div>
+    </details>
+</div>

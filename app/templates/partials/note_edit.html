@@ -1,0 +1,15 @@
+<div id="note-{{ note.id }}" style="padding: 8px 0; border-bottom: 1px solid var(--border);">
+    <form hx-patch="/notes/{{ note.id }}"
+        hx-target="{% if note.highlight_id %}#highlight-notes{% else %}#source-notes{% endif %}" hx-swap="outerHTML">
+        <textarea name="body" rows="3" required
+            style="font-size: 14px; background: transparent; border: none; border-bottom: 1px solid var(--border-strong); border-radius: 0; padding: 5px 0; box-shadow: none;">{{ note.body }}</textarea>
+        <div class="row" style="justify-content: flex-end; gap: 8px; margin-top: 6px;">
+            <button type="button" class="btn btn--ghost btn--sm"
+                hx-get="{% if note.highlight_id %}/highlights/{{ note.highlight_id }}/notes{% else %}/sources/{{ note.source_id }}/notes{% endif %}"
+                hx-target="{% if note.highlight_id %}#highlight-notes{% else %}#source-notes{% endif %}" hx-swap="outerHTML">
+                Cancel
+            </button>
+            <button type="submit" class="btn btn--ghost btn--sm">Save</button>
+        </div>
+    </form>
+</div>
