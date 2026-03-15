@@ -456,6 +456,48 @@ def render_source_notes(request: Request, source: Source, user: User):
     )
 
 
+def merge_sources(source_to_remove: Source, target_source: Source, user_id: str, db: Session):
+    if source_to_remove.user_id != user_id or target_source.user_id != user_id:
+        raise HTTPException(status_code=404, detail="Source not found")
+    if source_to_remove.id == target_source.id:
+        raise HTTPException(status_code=400, detail="Choose a different target source")
+    if source_to_remove.type != target_source.type:
+        raise HTTPException(status_code=400, detail="Sources must have the same type")
+
+    moved_highlights = (
+        db.query(Highlight)
+        .filter(
+            Highlight.user_id == user_id,
+            Highlight.source_id == source_to_remove.id,
+        )
+        .all()
+    )
+    for highlight in moved_highlights:
+        highlight.source_id = target_source.id
+        fingerprint_text = highlight.original_text or highlight.text
+        highlight.import_fingerprint = build_import_fingerprint(
+            target_source.id, fingerprint_text
+        )
+
+    (
+        db.query(Note)
+        .filter(Note.user_id == user_id, Note.source_id == source_to_remove.id)
+        .update({Note.source_id: target_source.id}, synchronize_session=False)
+    )
+
+    if not target_source.author and source_to_remove.author:
+        target_source.author = source_to_remove.author
+    if not target_source.title and source_to_remove.title:
+        target_source.title = source_to_remove.title
+    if not target_source.domain and source_to_remove.domain:
+        target_source.domain = source_to_remove.domain
+    if not target_source.original_name and source_to_remove.original_name:
+        target_source.original_name = source_to_remove.original_name
+
+    db.delete(source_to_remove)
+    db.commit()
+
+
 def parse_api_datetime(raw: Optional[str], field_name: str) -> Optional[datetime]:
     if not raw:
         return None
@@ -1912,6 +1954,20 @@ def source_detail(
         .limit(SOURCE_HIGHLIGHTS_PREVIEW_LIMIT)
         .all()
     )
+    merge_targets = (
+        db.query(Source)
+        .filter(
+            Source.user_id == user.id,
+            Source.id != source.id,
+            Source.type == source.type,
+        )
+        .order_by(
+            func.coalesce(
+                Source.display_name, Source.original_name, Source.title, Source.domain, ""
+            ).asc()
+        )
+        .all()
+    )
 
     return templates.TemplateResponse(
         "source_detail.html",
@@ -1920,6 +1976,7 @@ def source_detail(
             "source": source,
             "highlights": highlights,
             "highlight_count": highlight_count,
+            "merge_targets": merge_targets,
             "preview_limit": SOURCE_HIGHLIGHTS_PREVIEW_LIMIT,
             "current_user": user,
         },
@@ -2002,6 +2059,31 @@ def delete_source(
         response.headers["HX-Redirect"] = "/sources"
         return response
     return RedirectResponse(url="/sources", status_code=303)
+
+
+@app.post("/sources/{source_id}/merge")
+def merge_source(
+    source_id: str,
+    request: Request,
+    target_source_id: str = Form(),
+    user: User = Depends(require_user),
+    db: Session = Depends(get_db),
+):
+    source = get_source_for_user(source_id, user.id, db)
+    if not source:
+        raise HTTPException(status_code=404, detail="Source not found")
+
+    target_source = get_source_for_user(target_source_id.strip(), user.id, db)
+    if not target_source:
+        raise HTTPException(status_code=404, detail="Target source not found")
+
+    merge_sources(source, target_source, user.id, db)
+
+    if is_htmx(request):
+        response = Response(status_code=200)
+        response.headers["HX-Redirect"] = f"/sources/{target_source.id}"
+        return response
+    return RedirectResponse(url=f"/sources/{target_source.id}", status_code=303)
 
 
 @app.post("/highlights/{highlight_id}/notes")
