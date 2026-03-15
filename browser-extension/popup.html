@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PHM Web Clipper</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <main class="popup">
+    <header class="popup__header">
+      <span class="popup__logo">hl.</span>
+      <a href="options.html" target="_blank" rel="noreferrer" class="popup__settings">Settings</a>
+    </header>
+
+    <div id="status" class="status status--muted">Reading selection…</div>
+
+    <form id="save-form" class="form" hidden>
+      <label>
+        <span>Selected text</span>
+        <textarea id="text" name="text" rows="4" readonly></textarea>
+      </label>
+
+      <label>
+        <span>Tags</span>
+        <input id="tags" name="tags" type="text" placeholder="ideas, article">
+      </label>
+
+      <label>
+        <span>Note</span>
+        <textarea id="note" name="note" rows="2" placeholder="Optional note"></textarea>
+      </label>
+
+      <fieldset class="reminders">
+        <legend>Reminder</legend>
+        <div class="reminder-grid">
+          <label><input type="radio" name="reminder" value="" checked> None</label>
+          <label><input type="radio" name="reminder" value="tomorrow"> Tomorrow</label>
+          <label><input type="radio" name="reminder" value="next_week"> Next week</label>
+          <label><input type="radio" name="reminder" value="next_month"> Next month</label>
+        </div>
+      </fieldset>
+
+      <div class="meta">
+        <div id="page-title"></div>
+        <div id="page-url"></div>
+      </div>
+
+      <button id="save-button" type="submit">Save</button>
+    </form>
+  </main>
+  <script src="popup.js"></script>
+</body>
+</html>

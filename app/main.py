@@ -298,6 +298,41 @@ def build_remind_at_from_preset(preset: str, now: datetime) -> datetime:
     raise HTTPException(status_code=400, detail="Invalid reminder preset")
 
 
+def create_reminder_for_highlight(
+    user_id: str,
+    highlight_id: str,
+    db: Session,
+    preset: Optional[str] = None,
+    remind_on: Optional[str] = None,
+    now: Optional[datetime] = None,
+) -> Optional[Reminder]:
+    remind_on = remind_on.strip() if remind_on else None
+    preset = preset.strip() if preset else None
+    if not preset and not remind_on:
+        return None
+
+    resolved_now = now or datetime.utcnow()
+    if remind_on:
+        try:
+            custom_date = datetime.strptime(remind_on, "%Y-%m-%d")
+            resolved_remind_at = datetime(
+                custom_date.year, custom_date.month, custom_date.day
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail="Invalid custom reminder date") from exc
+    else:
+        resolved_remind_at = build_remind_at_from_preset(preset, resolved_now)
+
+    reminder = Reminder(
+        user_id=user_id,
+        highlight_id=highlight_id,
+        remind_at=resolved_remind_at,
+    )
+    db.add(reminder)
+    db.commit()
+    return reminder
+
+
 def get_or_create_source(
     user_id: str,
     source_url: Optional[str],
@@ -786,6 +821,8 @@ def create_highlight(
     text: str = Form(),
     tags: Optional[str] = Form(None),
     note: Optional[str] = Form(None),
+    reminder_preset: Optional[str] = Form(None),
+    remind_on: Optional[str] = Form(None),
     source_url: Optional[str] = Form(None),
     source_title: Optional[str] = Form(None),
     source_author: Optional[str] = Form(None),
@@ -811,6 +848,14 @@ def create_highlight(
         device_id=web_device.id,
         db=db,
     )
+    create_reminder_for_highlight(
+        user_id=user.id,
+        highlight_id=highlight.id,
+        db=db,
+        preset=reminder_preset,
+        remind_on=remind_on,
+    )
+    db.refresh(highlight)
 
     if is_htmx(request):
         return templates.TemplateResponse(
@@ -1008,6 +1053,8 @@ def api_create_highlight(
     text: str = Form(),
     note: Optional[str] = Form(None),
     tags: Optional[str] = Form(None),
+    reminder_preset: Optional[str] = Form(None),
+    remind_on: Optional[str] = Form(None),
     source_url: Optional[str] = Form(None),
     source_title: Optional[str] = Form(None),
     source_author: Optional[str] = Form(None),
@@ -1041,6 +1088,14 @@ def api_create_highlight(
             status_code=409,
             detail="Duplicate highlight for this source and original text",
         )
+
+    create_reminder_for_highlight(
+        user_id=device.user_id,
+        highlight_id=highlight.id,
+        db=db,
+        preset=reminder_preset,
+        remind_on=remind_on,
+    )
 
     return {"id": str(highlight.id), "created_at": highlight.created_at.isoformat()}
 

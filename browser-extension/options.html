@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PHM Web Clipper Settings</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body class="options-page">
+  <main class="popup">
+    <header class="popup__header">
+      <span class="popup__logo">hl.</span>
+      <span style="font-size: 13px; color: var(--muted);">Settings</span>
+    </header>
+
+    <div id="status" class="status status--muted">Store the PHM server URL and an add-only device API key.</div>
+
+    <form id="options-form" class="form">
+      <label>
+        <span>PHM Base URL</span>
+        <input id="base-url" type="text" placeholder="http://localhost:8000">
+      </label>
+      <label>
+        <span>Device API Key</span>
+        <input id="api-key" type="text" placeholder="phm_live_...">
+      </label>
+      <label>
+        <span>Default Tags</span>
+        <input id="default-tags" type="text" placeholder="web, article">
+      </label>
+      <button type="submit">Save Settings</button>
+    </form>
+  </main>
+  <script src="options.js"></script>
+</body>
+</html>
