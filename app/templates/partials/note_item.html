@@ -1,7 +1,7 @@
 <div id="note-{{ note.id }}">
-    <p style="margin: 0 0 5px 0; font-size: 14px; line-height: 1.6; color: var(--text); white-space: pre-wrap;">{{ note.body }}</p>
+    <p style="margin: 0 0 5px 0; font-size: 14px; line-height: 1.6; color: var(--muted); white-space: pre-wrap;">{{ note.body }}</p>
     <div class="row-between" style="align-items: center;">
-        <span class="muted-2" style="font-size: 12px;">{{ note.updated_at.strftime('%b %d, %Y') }}{% if note.kind %} · {{ note.kind }}{% endif %}</span>
+        <span class="muted-2" style="font-size: 12px;">{{ note.updated_at.strftime('%b %Y') }}{% if note.kind %} · {{ note.kind }}{% endif %}</span>
         <div class="row" style="gap: 2px;">
             <button class="icon-btn" hx-get="/notes/{{ note.id }}/edit" hx-target="#note-{{ note.id }}" hx-swap="outerHTML" title="Edit">
                 <svg class="icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor">
