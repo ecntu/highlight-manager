@@ -414,15 +414,23 @@ def create_highlight_with_metadata(
     dedupe_on_import: bool = False,
     location: Optional[dict[str, Any]] = None,
     highlighted_at: Optional[datetime] = None,
+    existing_source_id: Optional[str] = None,
 ) -> tuple[Highlight, bool]:
-    source, url, page_title, page_author = get_or_create_source(
-        user_id=user_id,
-        source_url=source_url,
-        source_title=source_title,
-        source_author=source_author,
-        db=db,
-    )
-    source_id = source.id if source else None
+    if existing_source_id:
+        source = db.query(Source).filter(Source.id == existing_source_id, Source.user_id == user_id).first()
+        source_id = source.id if source else None
+        url = None
+        page_title = None
+        page_author = None
+    else:
+        source, url, page_title, page_author = get_or_create_source(
+            user_id=user_id,
+            source_url=source_url,
+            source_title=source_title,
+            source_author=source_author,
+            db=db,
+        )
+        source_id = source.id if source else None
     fingerprint = build_import_fingerprint(source_id, text)
 
     if dedupe_on_import and fingerprint:
@@ -826,6 +834,7 @@ def create_highlight(
     source_url: Optional[str] = Form(None),
     source_title: Optional[str] = Form(None),
     source_author: Optional[str] = Form(None),
+    source_id: Optional[str] = Form(None),
     user: User = Depends(require_user),
     db: Session = Depends(get_db),
 ):
@@ -833,6 +842,7 @@ def create_highlight(
     source_url = source_url.strip() if source_url else None
     source_title = source_title.strip() if source_title else None
     source_author = source_author.strip() if source_author else None
+    source_id = source_id.strip() if source_id else None
     tags = tags.strip() if tags else None
     note = note.strip() if note else None
 
@@ -847,6 +857,7 @@ def create_highlight(
         source_author=source_author or None,
         device_id=web_device.id,
         db=db,
+        existing_source_id=source_id or None,
     )
     create_reminder_for_highlight(
         user_id=user.id,
@@ -1928,6 +1939,38 @@ def toggle_highlight_archive(
             {"request": request, "highlight": highlight, "current_user": user},
         )
     return RedirectResponse(url=f"/highlights/{highlight_id}", status_code=303)
+
+
+@app.get("/api/ui/sources/search")
+def ui_search_sources(
+    q: Optional[str] = None,
+    limit: int = 8,
+    user: User = Depends(require_user),
+    db: Session = Depends(get_db),
+):
+    source_name = func.coalesce(
+        Source.display_name, Source.original_name, Source.title, Source.domain, ""
+    )
+    last_used = func.max(func.coalesce(Highlight.highlighted_at, Highlight.created_at))
+    query = (
+        db.query(Source.id, Source.type, source_name.label("source_name"), Source.author, last_used.label("last_used"))
+        .outerjoin(Highlight, (Highlight.source_id == Source.id) & (Highlight.user_id == user.id))
+        .filter(Source.user_id == user.id)
+        .group_by(Source.id, Source.type, Source.display_name, Source.original_name, Source.title, Source.domain, Source.author)
+    )
+    if q and q.strip():
+        search = f"%{q.strip()}%"
+        query = query.filter(
+            or_(
+                Source.display_name.ilike(search),
+                Source.original_name.ilike(search),
+                Source.title.ilike(search),
+                Source.domain.ilike(search),
+                Source.author.ilike(search),
+            )
+        )
+    rows = query.order_by(func.coalesce(last_used, Source.created_at).desc()).limit(min(limit, 20)).all()
+    return [{"id": str(r.id), "name": r.source_name, "type": r.type.value, "author": r.author} for r in rows]
 
 
 @app.get("/sources", response_class=HTMLResponse)

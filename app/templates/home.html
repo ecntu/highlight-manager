@@ -4,22 +4,28 @@
 <!-- Quick Add -->
 <div style="margin-bottom: 28px; padding: 14px 16px; background: var(--panel-subtle); border: 1px solid var(--border); border-radius: var(--radius-md);">
     <form id="quick-add-form" hx-post="/highlights" hx-target="#highlights-list .stack" hx-swap="afterbegin"
-        hx-on::after-request="this.reset(); hideExtraFields()">
+        hx-on::after-request="resetQuickAdd()">
         <div class="form-group" style="margin-bottom: 0;">
-            <textarea id="highlight-text" name="text" rows="2"
+            <textarea id="highlight-text" name="text"
                 placeholder="Paste a highlight to save it..."
-                style="font-family: var(--font-serif); font-size: 16px; line-height: 1.65; resize: vertical; border: none; background: transparent; padding: 0; box-shadow: none; outline: none;"
-                required autofocus oninput="showExtraFields()"></textarea>
+                style="font-family: var(--font-serif); font-size: 16px; line-height: 1.65; resize: none; border: none; background: transparent; padding: 0; box-shadow: none; outline: none; overflow: hidden; min-height: 2.6em; width: 100%; display: block;"
+                required autofocus oninput="autoGrow(this); showExtraFields()"></textarea>
         </div>
 
         <div id="extra-fields" style="display: none; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border);">
-            <div class="grid-two" style="margin-bottom: 8px;">
-                <input type="text" name="tags" placeholder="Tags (comma-separated)">
-                <input type="text" name="note" placeholder="Initial note (optional)">
+            <!-- Source picker -->
+            <div style="position: relative; margin-bottom: 8px;" id="source-picker-wrap">
+                <input type="text" id="source-input" autocomplete="off" placeholder="Source (optional)"
+                    oninput="onSourceInput(this)" onfocus="onSourceFocus()" onblur="onSourceBlur()"
+                    onkeydown="onSourceKeydown(event)">
+                <input type="hidden" name="source_id" id="source-id-hidden">
+                <input type="hidden" name="source_url" id="source-url-hidden">
+                <input type="hidden" name="source_title" id="source-title-hidden">
+                <div id="source-dropdown" class="search-dropdown"></div>
             </div>
             <div class="grid-two" style="margin-bottom: 12px;">
-                <input type="text" name="source_url" placeholder="URL (for web)">
-                <input type="text" name="source_title" placeholder="Title (for books)">
+                <input type="text" name="note" id="quick-note" placeholder="Note (optional)">
+                <input type="text" name="tags" id="quick-tags" placeholder="Tags (comma-separated)">
             </div>
             <div class="form-actions">
                 <button type="submit" class="btn btn--ghost btn--sm">
@@ -124,20 +130,180 @@
 </script>
 
 <script>
+    function autoGrow(el) {
+        el.style.height = 'auto';
+        el.style.height = el.scrollHeight + 'px';
+    }
+
     function showExtraFields() {
         const text = document.getElementById('highlight-text').value.trim();
         const extraFields = document.getElementById('extra-fields');
         if (text && extraFields.style.display === 'none') {
             extraFields.style.display = 'block';
             extraFields.style.animation = 'slideDown 0.18s ease-out';
+            prefillRecentSource();
         }
     }
 
-    function hideExtraFields() {
-        document.getElementById('extra-fields').style.display = 'none';
+    async function prefillRecentSource() {
+        try {
+            const resp = await fetch('/api/ui/sources/search?q=&limit=1');
+            if (!resp.ok) return;
+            const sources = await resp.json();
+            if (sources.length && !document.getElementById('source-id-hidden').value) {
+                selectSource(sources[0].id, sources[0].name);
+                _sourceIsDefault = true;
+            }
+        } catch {}
+    }
+
+    function resetQuickAdd() {
         const ta = document.getElementById('highlight-text');
         ta.value = '';
-        ta.rows = 2;
+        ta.style.height = '';
+        document.getElementById('extra-fields').style.display = 'none';
+        document.getElementById('source-input').value = '';
+        document.getElementById('source-id-hidden').value = '';
+        document.getElementById('source-url-hidden').value = '';
+        document.getElementById('source-title-hidden').value = '';
+        document.getElementById('quick-tags').value = '';
+        document.getElementById('quick-note').value = '';
+        hideSourceDropdown();
+    }
+
+    // ── Source picker ──────────────────────────────────────
+    let _sourceTimer = null;
+    let _sourceBlurTimer = null;
+    let _sourceFocusedIndex = -1;
+    let _sourceIsDefault = false;
+
+    function onSourceInput(input) {
+        _sourceIsDefault = false;
+        document.getElementById('source-id-hidden').value = '';
+        document.getElementById('source-url-hidden').value = '';
+        document.getElementById('source-title-hidden').value = '';
+        clearTimeout(_sourceTimer);
+        const val = input.value.trim();
+        if (!val) { hideSourceDropdown(); return; }
+        _sourceTimer = setTimeout(() => fetchSources(val), 200);
+    }
+
+    function onSourceFocus() {
+        clearTimeout(_sourceBlurTimer);
+        if (_sourceIsDefault) {
+            document.getElementById('source-input').select();
+        }
+        const val = document.getElementById('source-input').value.trim();
+        fetchSources(val);
+    }
+
+    function onSourceBlur() {
+        _sourceBlurTimer = setTimeout(hideSourceDropdown, 180);
+    }
+
+    function onSourceKeydown(e) {
+        const dd = document.getElementById('source-dropdown');
+        const items = dd.querySelectorAll('.search-dropdown-item');
+        if (!items.length) return;
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            _sourceFocusedIndex = Math.min(_sourceFocusedIndex + 1, items.length - 1);
+            highlightDropdownItem(items);
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            _sourceFocusedIndex = Math.max(_sourceFocusedIndex - 1, 0);
+            highlightDropdownItem(items);
+        } else if (e.key === 'Enter') {
+            if (_sourceFocusedIndex >= 0 && items[_sourceFocusedIndex]) {
+                e.preventDefault();
+                items[_sourceFocusedIndex].click();
+            }
+        } else if (e.key === 'Escape') {
+            hideSourceDropdown();
+        }
+    }
+
+    function highlightDropdownItem(items) {
+        items.forEach((el, i) => el.style.background = i === _sourceFocusedIndex ? 'var(--panel-subtle)' : '');
+    }
+
+    async function fetchSources(q) {
+        try {
+            const resp = await fetch(`/api/ui/sources/search?q=${encodeURIComponent(q)}&limit=8`);
+            if (!resp.ok) return;
+            renderSourceDropdown(await resp.json(), q);
+        } catch {}
+    }
+
+    function renderSourceDropdown(sources, q) {
+        const input = document.getElementById('source-input');
+        const typed = input.value.trim();
+        _sourceFocusedIndex = -1;
+        let html = '';
+        sources.forEach(s => {
+            const author = s.author ? `<span style="font-size:12px;color:var(--text);opacity:.55;margin-left:6px;">${escHtml(s.author)}</span>` : '';
+            html += `<div class="search-dropdown-item" data-source-id="${escAttr(s.id)}" data-source-name="${escAttr(s.name)}"
+                onmousedown="selectSource(this.dataset.sourceId, this.dataset.sourceName)">
+                <span style="font-size:14px;font-weight:500;">${escHtml(s.name)}</span>${author}
+            </div>`;
+        });
+        if (typed) {
+            const isUrl = typed.startsWith('http://') || typed.startsWith('https://');
+            const label = isUrl ? 'Add URL' : 'New source';
+            html += `<div class="search-dropdown-item" style="color:var(--accent);" data-create="${escAttr(typed)}"
+                onmousedown="createSource(this.dataset.create)">
+                <span style="font-size:13px;">+ ${label}: <em>${escHtml(typed)}</em></span>
+            </div>`;
+        }
+        const dd = document.getElementById('source-dropdown');
+        if (!html) { dd.classList.remove('active'); return; }
+        dd.innerHTML = html;
+        dd.classList.add('active');
+    }
+
+    function selectSource(id, name) {
+        document.getElementById('source-input').value = name;
+        document.getElementById('source-id-hidden').value = id;
+        hideSourceDropdown();
+    }
+
+    function createSource(val) {
+        const isUrl = val.startsWith('http://') || val.startsWith('https://');
+        if (isUrl) {
+            document.getElementById('source-url-hidden').value = val;
+        } else {
+            document.getElementById('source-title-hidden').value = val;
+        }
+        document.getElementById('source-input').value = val;
+        hideSourceDropdown();
+    }
+
+    function hideSourceDropdown() {
+        document.getElementById('source-dropdown').classList.remove('active');
+    }
+
+    // On submit: if source input has text but no hidden value set, inject into HTMX params directly
+    document.getElementById('quick-add-form').addEventListener('htmx:configRequest', function(e) {
+        const sourceId = document.getElementById('source-id-hidden').value.trim();
+        const sourceUrl = document.getElementById('source-url-hidden').value.trim();
+        const sourceTitle = document.getElementById('source-title-hidden').value.trim();
+        if (!sourceId && !sourceUrl && !sourceTitle) {
+            const typed = document.getElementById('source-input').value.trim();
+            if (typed) {
+                if (typed.startsWith('http://') || typed.startsWith('https://')) {
+                    e.detail.parameters['source_url'] = typed;
+                } else {
+                    e.detail.parameters['source_title'] = typed;
+                }
+            }
+        }
+    });
+
+    function escHtml(s) {
+        return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+    function escAttr(s) {
+        return String(s).replace(/"/g, '&quot;');
     }
 
     const style = document.createElement('style');
