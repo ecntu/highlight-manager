@@ -534,24 +534,22 @@
 
         /* ── Responsive ── */
         @media (max-width: 720px) {
-            .container { padding: 0 16px; }
+            .container { padding: 0 10px; }
             .page-content { padding-top: 18px; padding-bottom: 36px; }
 
-            header { position: static; backdrop-filter: none; }
+            header { position: relative; backdrop-filter: none; border-bottom: none; }
 
             header .container {
-                flex-direction: column;
-                gap: 6px;
-                padding: 10px 16px;
+                flex-direction: row;
+                align-items: center;
+                gap: 8px;
+                padding: 8px 10px;
             }
 
             .header-top { display: none; }
+            nav { display: none; }
 
-            nav { order: 1; width: 100%; justify-content: space-around; margin-left: 0; }
-            nav a { flex: 1; justify-content: center; padding: 7px 8px; font-size: 13px; }
-            nav a .nav-label { display: none; }
-
-            .nav-search { order: 2; max-width: 100%; flex: 1; }
+            .nav-search { max-width: none; flex: 1; }
             .key-hint { display: none; }
 
             .section-header { flex-direction: column; align-items: flex-start; gap: 2px; margin-bottom: 8px; }
@@ -650,6 +648,57 @@
         #back-to-top.visible { opacity: 1; pointer-events: auto; }
         #back-to-top:hover { color: var(--text); border-color: var(--border-strong); }
         #back-to-top svg { width: 15px; height: 15px; }
+
+        /* ── Burger menu ── */
+        #burger-btn {
+            display: none;
+            flex-shrink: 0;
+            background: transparent;
+            border: none;
+            color: var(--muted);
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            padding: 4px;
+            transition: color 0.15s;
+        }
+        #burger-btn:hover { color: var(--text); }
+        #burger-btn svg { width: 18px; height: 18px; }
+
+        #burger-menu {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: var(--panel);
+            border-bottom: 1px solid var(--border);
+            z-index: 99;
+            padding: 6px 0;
+        }
+        #burger-menu.open { display: block; }
+        #burger-menu a {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 11px 20px;
+            text-decoration: none;
+            color: var(--muted);
+            font-size: 14px;
+            font-weight: 500;
+            font-family: var(--font-sans);
+            transition: background 0.1s, color 0.1s;
+        }
+        #burger-menu a:hover, #burger-menu a.nav-active { background: var(--panel-subtle); color: var(--text); }
+        #burger-menu a svg { width: 16px; height: 16px; flex-shrink: 0; }
+
+        @media (min-width: 721px) {
+            #burger-btn { display: none !important; }
+            #burger-menu { display: none !important; }
+        }
+        @media (max-width: 720px) {
+            #burger-btn { display: flex; }
+        }
     </style>
     <script src="https://unpkg.com/htmx.org@1.9.10"></script>
 </head>
@@ -692,6 +741,31 @@
                     <span class="nav-label">Settings</span>
                 </a>
             </nav>
+
+            <button id="burger-btn" aria-label="Menu" aria-expanded="false">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+            </button>
+        </div>
+
+        <div id="burger-menu">
+            <a href="/sources" class="{% if request.url.path.startswith('/sources') %}nav-active{% endif %}">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                </svg>
+                Sources
+            </a>
+            <a href="/settings" class="{% if request.url.path == '/settings' or request.url.path == '/reminders' %}nav-active{% endif %}">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                Settings
+            </a>
         </div>
     </header>
     {% endif %}
@@ -725,6 +799,22 @@
         window.addEventListener('scroll', () => {
             document.getElementById('back-to-top').classList.toggle('visible', window.scrollY > 300);
         });
+
+        const burgerBtn = document.getElementById('burger-btn');
+        const burgerMenu = document.getElementById('burger-menu');
+        if (burgerBtn && burgerMenu) {
+            burgerBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const open = burgerMenu.classList.toggle('open');
+                burgerBtn.setAttribute('aria-expanded', open);
+            });
+            document.addEventListener('click', (e) => {
+                if (!burgerMenu.contains(e.target) && e.target !== burgerBtn) {
+                    burgerMenu.classList.remove('open');
+                    burgerBtn.setAttribute('aria-expanded', 'false');
+                }
+            });
+        }
 
         document.body.addEventListener('htmx:afterSwap', (e) => {
             if (e.detail.target.id === 'nav-search-results') {
