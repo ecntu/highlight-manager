@@ -537,24 +537,22 @@
             .container { padding: 0 16px; }
             .page-content { padding-top: 18px; padding-bottom: 36px; }
 
+            header { position: static; backdrop-filter: none; }
+
             header .container {
                 flex-direction: column;
-                gap: 8px;
+                gap: 6px;
                 padding: 10px 16px;
             }
 
-            .header-top {
-                display: flex;
-                align-items: center;
-                gap: 12px;
-            }
+            .header-top { display: none; }
 
-            .nav-search { max-width: 100%; flex: 1; }
-            .key-hint { display: none; }
-
-            nav { width: 100%; justify-content: space-around; margin-left: 0; }
+            nav { order: 1; width: 100%; justify-content: space-around; margin-left: 0; }
             nav a { flex: 1; justify-content: center; padding: 7px 8px; font-size: 13px; }
             nav a .nav-label { display: none; }
+
+            .nav-search { order: 2; max-width: 100%; flex: 1; }
+            .key-hint { display: none; }
 
             .section-header { flex-direction: column; align-items: flex-start; gap: 2px; margin-bottom: 8px; }
             .section-meta { line-height: 1.2; }
@@ -589,7 +587,7 @@
             #highlight-view.card { padding: 14px !important; }
             .mobile-compact-pills .pill { min-height: 19px; padding: 1px 6px; font-size: 11px; }
             .mobile-compact-action-btn .icon { width: 13px; height: 13px; }
-            .highlight-main-text { font-size: 16px !important; line-height: 1.55 !important; }
+            .highlight-main-text { font-size: 14.5px !important; line-height: 1.55 !important; }
         }
 
         @media (min-width: 721px) {
@@ -627,6 +625,31 @@
         /* ── Spinner ── */
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         .spinner { display: inline-block; animation: spin 1s linear infinite; }
+
+        /* ── Back to top ── */
+        #back-to-top {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            background: var(--panel);
+            border: 1px solid var(--border);
+            color: var(--muted);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s, color 0.15s;
+            z-index: 50;
+            padding: 0;
+        }
+        #back-to-top.visible { opacity: 1; pointer-events: auto; }
+        #back-to-top:hover { color: var(--text); border-color: var(--border-strong); }
+        #back-to-top svg { width: 15px; height: 15px; }
     </style>
     <script src="https://unpkg.com/htmx.org@1.9.10"></script>
 </head>
@@ -677,6 +700,12 @@
         {% block content %}{% endblock %}
     </div>
 
+    <button id="back-to-top" onclick="window.scrollTo({top:0,behavior:'smooth'})" aria-label="Back to top">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
+        </svg>
+    </button>
+
     <script>
         document.addEventListener('keydown', (e) => {
             if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
@@ -691,6 +720,10 @@
             if (dropdown && !dropdown.contains(e.target) && e.target !== search) {
                 dropdown.classList.remove('active');
             }
+        });
+
+        window.addEventListener('scroll', () => {
+            document.getElementById('back-to-top').classList.toggle('visible', window.scrollY > 300);
         });
 
         document.body.addEventListener('htmx:afterSwap', (e) => {
