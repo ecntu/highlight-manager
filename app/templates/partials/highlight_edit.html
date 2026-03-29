@@ -1,5 +1,5 @@
 <div id="highlight-view">
-    <form hx-patch="/highlights/{{ highlight.id }}" hx-target="#highlight-view" hx-swap="outerHTML">
+    <form id="edit-form-{{ highlight.id }}" hx-patch="/highlights/{{ highlight.id }}" hx-target="#highlight-view" hx-swap="outerHTML">
         <div class="form-group">
             <label>Highlight Text</label>
             <textarea name="text" rows="6" required
@@ -13,18 +13,23 @@
                 placeholder="productivity, inspiration, ideas">
         </div>
 
-        <div class="grid-two">
-            <div class="form-group">
-                <label>Source URL (for web)</label>
-                <input type="text" name="source_url" value="{{ highlight.url or '' }}"
-                    placeholder="https://example.com/article">
+        <div class="form-group">
+            <label>Source</label>
+            <div style="position: relative;">
+                <input type="text" id="edit-source-input-{{ highlight.id }}"
+                    placeholder="Search sources or paste a URL…"
+                    autocomplete="off"
+                    value="{{ highlight.source.name if highlight.source else '' }}"
+                    oninput="editSourceInput_{{ highlight.id|replace('-','') }}(this)"
+                    onfocus="editSourceFocus_{{ highlight.id|replace('-','') }}()"
+                    onblur="editSourceBlur_{{ highlight.id|replace('-','') }}()"
+                    onkeydown="editSourceKeydown_{{ highlight.id|replace('-','') }}(event)">
+                <div id="edit-source-dropdown-{{ highlight.id }}" class="search-dropdown"></div>
             </div>
-            <div class="form-group">
-                <label>Source Title (for books)</label>
-                <input type="text" name="source_title"
-                    value="{{ highlight.source.title if highlight.source and highlight.source.type.value == 'book' else '' }}"
-                    placeholder="Book title">
-            </div>
+            <input type="hidden" name="source_id" id="edit-source-id-{{ highlight.id }}"
+                value="{{ highlight.source_id or '' }}">
+            <input type="hidden" name="source_url" id="edit-source-url-{{ highlight.id }}" value="">
+            <input type="hidden" name="source_title" id="edit-source-title-{{ highlight.id }}" value="">
         </div>
 
         <div class="form-group">
@@ -49,17 +54,168 @@
 </div>
 <script>
     (function () {
-        const cancelButton = document.getElementById('cancel-edit-{{ highlight.id }}');
-        if (!cancelButton) return;
-        const controller = new AbortController();
-        const onKeyDown = (event) => {
-            if (event.key === 'Escape') {
-                event.preventDefault();
-                cancelButton.click();
-                controller.abort();
+        const hid = '{{ highlight.id }}';
+        const sfx = hid.replace(/-/g, '');
+
+        // ── DOM refs ──────────────────────────────────────────
+        const input    = document.getElementById('edit-source-input-' + hid);
+        const dropdown = document.getElementById('edit-source-dropdown-' + hid);
+        const idField  = document.getElementById('edit-source-id-' + hid);
+        const urlField = document.getElementById('edit-source-url-' + hid);
+        const titleField = document.getElementById('edit-source-title-' + hid);
+
+        // ── State ─────────────────────────────────────────────
+        let _timer = null;
+        let _blurTimer = null;
+        let _focusedIndex = -1;
+
+        // ── Helpers ───────────────────────────────────────────
+        function escHtml(s) {
+            return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+        }
+        function escAttr(s) { return escHtml(s); }
+
+        function clearHiddens() {
+            idField.value = '';
+            urlField.value = '';
+            titleField.value = '';
+        }
+
+        function hideDropdown() {
+            dropdown.classList.remove('active');
+            _focusedIndex = -1;
+        }
+
+        function highlightItem(items) {
+            items.forEach((el, i) => el.style.background = i === _focusedIndex ? 'var(--panel-subtle)' : '');
+        }
+
+        function selectSource(id, name) {
+            input.value = name;
+            idField.value = id;
+            urlField.value = '';
+            titleField.value = '';
+            hideDropdown();
+        }
+
+        function createSource(val) {
+            const isUrl = val.startsWith('http://') || val.startsWith('https://');
+            clearHiddens();
+            if (isUrl) {
+                urlField.value = val;
+            } else {
+                titleField.value = val;
+            }
+            hideDropdown();
+        }
+
+        function renderDropdown(sources, q) {
+            _focusedIndex = -1;
+            const typed = input.value.trim();
+            let html = '';
+            sources.forEach(s => {
+                const typeLabel = s.type === 'book'
+                    ? '<span style="font-size:11px;opacity:.5;margin-left:6px;">book</span>'
+                    : '<span style="font-size:11px;opacity:.5;margin-left:6px;">web</span>';
+                const author = s.author ? `<span style="font-size:12px;opacity:.55;margin-left:6px;">${escHtml(s.author)}</span>` : '';
+                html += `<div class="search-dropdown-item" data-id="${escAttr(s.id)}" data-name="${escAttr(s.name)}"
+                    onmousedown="(function(){editSelectSource_${sfx}(this.dataset.id, this.dataset.name)}).call(this)">
+                    <span style="font-size:14px;font-weight:500;">${escHtml(s.name)}</span>${typeLabel}${author}
+                </div>`;
+            });
+            if (typed) {
+                const isUrl = typed.startsWith('http://') || typed.startsWith('https://');
+                const label = isUrl ? 'Add URL' : 'New source';
+                html += `<div class="search-dropdown-item" style="color:var(--accent);" data-create="${escAttr(typed)}"
+                    onmousedown="(function(){editCreateSource_${sfx}(this.dataset.create)}).call(this)">
+                    <span style="font-size:13px;">+ ${label}: <em>${escHtml(typed)}</em></span>
+                </div>`;
+            }
+            if (!html) { hideDropdown(); return; }
+            dropdown.innerHTML = html;
+            dropdown.classList.add('active');
+        }
+
+        async function fetchSources(q) {
+            try {
+                const resp = await fetch('/api/ui/sources/search?q=' + encodeURIComponent(q) + '&limit=8');
+                if (!resp.ok) return;
+                renderDropdown(await resp.json(), q);
+            } catch {}
+        }
+
+        // ── Public handlers (attached to window for inline onmousedown) ──
+        window['editSelectSource_' + sfx] = selectSource;
+        window['editCreateSource_' + sfx] = createSource;
+
+        window['editSourceInput_' + sfx] = function(el) {
+            clearHiddens();
+            clearTimeout(_timer);
+            const val = el.value.trim();
+            if (!val) { hideDropdown(); return; }
+            _timer = setTimeout(() => fetchSources(val), 200);
+        };
+
+        window['editSourceFocus_' + sfx] = function() {
+            clearTimeout(_blurTimer);
+            fetchSources(input.value.trim());
+        };
+
+        window['editSourceBlur_' + sfx] = function() {
+            _blurTimer = setTimeout(hideDropdown, 180);
+        };
+
+        window['editSourceKeydown_' + sfx] = function(e) {
+            const items = dropdown.querySelectorAll('.search-dropdown-item');
+            if (!items.length) return;
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                _focusedIndex = Math.min(_focusedIndex + 1, items.length - 1);
+                highlightItem(items);
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                _focusedIndex = Math.max(_focusedIndex - 1, 0);
+                highlightItem(items);
+            } else if (e.key === 'Enter') {
+                if (_focusedIndex >= 0 && items[_focusedIndex]) {
+                    e.preventDefault();
+                    items[_focusedIndex].click();
+                }
+            } else if (e.key === 'Escape') {
+                hideDropdown();
             }
         };
-        cancelButton.addEventListener('click', () => controller.abort(), { once: true });
-        document.addEventListener('keydown', onKeyDown, { signal: controller.signal });
+
+        // ── On submit: if input has text but no hidden set, inject as URL/title ──
+        document.getElementById('edit-form-' + hid).addEventListener('htmx:configRequest', function(e) {
+            const sid   = idField.value.trim();
+            const surl  = urlField.value.trim();
+            const stitle = titleField.value.trim();
+            if (!sid && !surl && !stitle) {
+                const typed = input.value.trim();
+                if (typed) {
+                    if (typed.startsWith('http://') || typed.startsWith('https://')) {
+                        e.detail.parameters['source_url'] = typed;
+                    } else {
+                        e.detail.parameters['source_title'] = typed;
+                    }
+                }
+            }
+        });
+
+        // ── Escape to cancel ──────────────────────────────────
+        const cancelButton = document.getElementById('cancel-edit-' + hid);
+        if (cancelButton) {
+            const controller = new AbortController();
+            const onKeyDown = (event) => {
+                if (event.key === 'Escape') {
+                    event.preventDefault();
+                    cancelButton.click();
+                    controller.abort();
+                }
+            };
+            cancelButton.addEventListener('click', () => controller.abort(), { once: true });
+            document.addEventListener('keydown', onKeyDown, { signal: controller.signal });
+        }
     })();
 </script>

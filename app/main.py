@@ -1681,6 +1681,7 @@ def update_highlight(
     request: Request,
     text: str = Form(),
     tags: Optional[str] = Form(None),
+    source_id: Optional[str] = Form(None),
     source_url: Optional[str] = Form(None),
     source_title: Optional[str] = Form(None),
     source_author: Optional[str] = Form(None),
@@ -1708,11 +1709,13 @@ def update_highlight(
         highlight.highlighted_at = None
 
     # Convert empty strings to None
+    source_id = source_id.strip() if source_id else None
     source_url = source_url.strip() if source_url else None
     source_title = source_title.strip() if source_title else None
     source_author = source_author.strip() if source_author else None
     tags = tags.strip() if tags else None
 
+    source_id = source_id or None
     source_url = source_url or None
     source_title = source_title or None
     source_author = source_author or None
@@ -1733,7 +1736,19 @@ def update_highlight(
                 db.flush()
             highlight.tags.append(tag)
 
-    if source_url or source_title:
+    if source_id:
+        existing_source = get_source_for_user(source_id, user.id, db)
+        if not existing_source:
+            raise HTTPException(status_code=404, detail="Source not found")
+        highlight.source_id = existing_source.id
+        highlight.url = None
+        highlight.page_title = None
+        highlight.page_author = source_author or None
+        fingerprint_text = highlight.original_text or text
+        highlight.import_fingerprint = build_import_fingerprint(
+            highlight.source_id, fingerprint_text
+        )
+    elif source_url or source_title:
         source, resolved_url, page_title, page_author = get_or_create_source(
             user_id=user.id,
             source_url=source_url,
