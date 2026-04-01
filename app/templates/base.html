@@ -633,6 +633,10 @@
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         .spinner { display: inline-block; animation: spin 1s linear infinite; }
 
+        /* ── View Transitions ── */
+        @view-transition { navigation: auto; }
+        ::view-transition-old(root), ::view-transition-new(root) { animation-duration: 0.2s; }
+
         /* ── Back to top ── */
         #back-to-top {
             position: fixed;
