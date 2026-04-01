@@ -23,12 +23,9 @@
             {% endif %}
             {% if highlight.tags %}
             {% for tag in highlight.tags %}
-            <span class="pill pill--blue">{{ tag.name }}</span>
+            <a href="/search?tag={{ tag.name }}" class="tag-text">#{{ tag.name }}</a>
             {% endfor %}
             {% endif %}
-            <button hx-get="/highlights/{{ highlight.id }}/add-tag" hx-target="#tag-modal" hx-swap="innerHTML"
-                onclick="document.getElementById('tag-modal').style.display='flex'" title="Add tag"
-                class="pill pill-btn"><span>+</span><span>#</span></button>
         </div>
 
         <div class="row" style="gap: 8px; white-space: nowrap;">
@@ -167,12 +164,9 @@
                 <div class="mobile-compact-pills">
                     {% if highlight.tags %}
                     {% for tag in highlight.tags %}
-                    <span class="pill pill--blue">{{ tag.name }}</span>
+                    <a href="/search?tag={{ tag.name }}" class="tag-text">#{{ tag.name }}</a>
                     {% endfor %}
                     {% endif %}
-                    <button hx-get="/highlights/{{ highlight.id }}/add-tag" hx-target="#tag-modal" hx-swap="innerHTML"
-                        onclick="document.getElementById('tag-modal').style.display='flex'" title="Add tag"
-                        class="pill pill-btn mobile-pill-action"><span>+</span><span>Tag</span></button>
                 </div>
             </div>
         </div>

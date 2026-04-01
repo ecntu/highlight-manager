@@ -14,13 +14,11 @@
             {% endif %}
 
             {% if highlight.tags %}
-            {% if highlight.source and not hide_source %}<span class="meta-divider">·</span>{% endif %}
             {% for tag in highlight.tags %}
-            <a href="/search?tag={{ tag.name }}" class="pill pill--blue">{{ tag.name }}</a>
+            <a href="/search?tag={{ tag.name }}" class="tag-text">#{{ tag.name }}</a>
             {% endfor %}
             {% endif %}
             {% if highlight.notes %}
-            {% if highlight.tags or (highlight.source and not hide_source) %}<span class="meta-divider">·</span>{% endif %}
             <span class="muted-2">{{ highlight.notes|length }} note{% if highlight.notes|length != 1 %}s{% endif %}</span>
             {% endif %}
         </div>

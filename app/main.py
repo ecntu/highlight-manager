@@ -2441,22 +2441,56 @@ def search_quick(
     db: Session = Depends(get_db),
 ):
     results = []
+    tag_search: Optional[str] = None
+    q_text: Optional[str] = q
+    if q and q.startswith("#"):
+        parts = q[1:].split(None, 1)
+        if parts:
+            tag_search = parts[0]
+            q_text = parts[1] if len(parts) > 1 else None
+
+    # Tag autocomplete: when user is still typing a tag name (no space yet), suggest tags
+    if q and q.startswith("#") and " " not in q[1:]:
+        tag_prefix = q[1:]
+        matching_tags = (
+            db.query(Tag)
+            .filter(Tag.user_id == user.id, Tag.name.ilike(f"{tag_prefix}%"))
+            .order_by(Tag.name)
+            .limit(8)
+            .all()
+        )
+        if matching_tags:
+            html = ""
+            for tag in matching_tags:
+                html += f'<a href="/search?tag={tag.name}" class="search-dropdown-item" style="text-decoration:none;color:inherit;display:flex;align-items:center;gap:8px;"><span style="font-size:13px;font-weight:500;">#{tag.name}</span></a>'
+            if tag_prefix:
+                html += f'<div class="search-dropdown-footer"><a href="/search?tag={tag_prefix}">Search highlights tagged "{tag_prefix}" →</a></div>'
+            return html
+        # No matching tags — fall through to show highlights (or empty)
+
     if q and len(q.strip()) >= 2:
-        search_term = f"%{q}%"
-        results = (
-            db.query(Highlight)
-            .filter(
-                Highlight.user_id == user.id,
+        base = db.query(Highlight).filter(Highlight.user_id == user.id)
+        if tag_search:
+            base = base.filter(Highlight.tags.any(Tag.name == tag_search))
+            if q_text:
+                search_term = f"%{q_text}%"
+                base = base.filter(
+                    or_(
+                        Highlight.text.ilike(search_term),
+                        Highlight.notes.any(Note.body.ilike(search_term)),
+                        Highlight.page_title.ilike(search_term),
+                    )
+                )
+        else:
+            search_term = f"%{q}%"
+            base = base.filter(
                 or_(
                     Highlight.text.ilike(search_term),
                     Highlight.notes.any(Note.body.ilike(search_term)),
                     Highlight.page_title.ilike(search_term),
-                ),
+                )
             )
-            .order_by(_effective_date().desc())
-            .limit(5)
-            .all()
-        )
+        results = base.options(joinedload(Highlight.tags)).order_by(_effective_date().desc()).limit(5).all()
 
     if not results:
         return ""
@@ -2466,13 +2500,17 @@ def search_quick(
     for h in results:
         preview = h.text[:100] + "..." if len(h.text) > 100 else h.text
         # Apply highlighting
-        highlighted_preview = highlight_matches(preview, q)
+        highlighted_preview = highlight_matches(preview, q_text or "")
         source_text = h.source.name if h.source else "No source"
+        tag_chips = "".join(
+            f'<span style="font-size:11px;background:var(--tag-bg,#e8f0fe);color:var(--tag-color,#1967d2);border-radius:4px;padding:1px 6px;margin-left:4px;">#{t.name}</span>'
+            for t in h.tags
+        ) if tag_search else ""
 
         html += f"""
         <a href="/highlights/{h.id}" class="search-dropdown-item" style="text-decoration: none; color: inherit; display: block;">
             <div style="font-size: 13px; color: #666; margin-bottom: 4px;">
-                {source_text}
+                {source_text}{tag_chips}
             </div>
             <div style="font-size: 14px; color: #1a1a1a;">{highlighted_preview}</div>
         </a>
@@ -2504,6 +2542,15 @@ def search_page(
     get_or_create_web_device(user.id, db, backfill=True)
     status_provided = status is not None
     status_filter = status if status not in (None, "", "all") else None
+
+    # Parse #tag prefix from query string
+    q_text: Optional[str] = q
+    if q and q.startswith("#"):
+        parts = q[1:].split(None, 1)
+        if parts and not tag:
+            tag = parts[0]
+        q_text = parts[1] if len(parts) > 1 else None
+
     has_search = bool(
         q
         or source_type
@@ -2525,8 +2572,8 @@ def search_page(
             .filter(Highlight.user_id == user.id)
         )
 
-        if q:
-            search_term = f"%{q}%"
+        if q_text:
+            search_term = f"%{q_text}%"
             query = query.filter(
                 or_(
                     Highlight.text.ilike(search_term),
@@ -2558,7 +2605,7 @@ def search_page(
         # Apply sorting
         if sort == "recent-asc":
             query = query.order_by(_effective_date().asc())
-        elif sort == "relevance" and q:
+        elif sort == "relevance" and q_text:
             # For relevance, prioritize exact matches in text over note
             # This is a simple implementation; could be enhanced with full-text search
             query = query.order_by(

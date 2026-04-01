@@ -612,6 +612,15 @@
         .htmx-swapping { opacity: 0; transition: opacity 150ms ease-out; }
         .htmx-settling { opacity: 1; transition: opacity 150ms ease-in; }
 
+        /* ── Tag text ── */
+        .tag-text {
+            color: var(--muted-2);
+            font-size: 12px;
+            text-decoration: none;
+            transition: color 0.15s;
+        }
+        .tag-text:hover { color: var(--muted); }
+
         /* ── Search highlights ── */
         .search-dropdown strong, #search-results strong {
             background: var(--amber-bg);
@@ -718,7 +727,7 @@
                 <input type="text" id="nav-search" name="q" placeholder="Search highlights..."
                     hx-get="/api/search-quick" hx-trigger="keyup changed delay:300ms" hx-target="#nav-search-results"
                     hx-include="#nav-search" autocomplete="off"
-                    onkeydown="if(event.key === 'Enter') { event.preventDefault(); window.location.href = '/search?q=' + encodeURIComponent(this.value); } else if(event.key === 'Escape') { this.value = ''; document.getElementById('nav-search-results').classList.remove('active'); }">
+                    onkeydown="if(event.key==='Enter'){event.preventDefault();const v=this.value.trim();if(v.startsWith('#')&&!v.includes(' ')){window.location.href='/search?tag='+encodeURIComponent(v.slice(1));}else{window.location.href='/search?q='+encodeURIComponent(v);}}else if(event.key==='Escape'){this.value='';document.getElementById('nav-search-results').classList.remove('active');}">
                 <span class="key-hint">⌘K</span>
                 <div id="nav-search-results" class="search-dropdown"></div>
             </div>
@@ -826,6 +835,7 @@
                 }
             }
         });
+
     </script>
 </body>
 
