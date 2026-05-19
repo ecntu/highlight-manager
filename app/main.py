@@ -519,6 +519,40 @@ def get_highlight_for_user(highlight_id: str, user_id: str, db: Session) -> Opti
     )
 
 
+def get_context_highlights(
+    highlight: "Highlight", user_id: str, db: Session, n: int = 3
+) -> tuple[list, list]:
+    if not highlight.source_id:
+        return [], []
+    eff = _effective_date()
+    cur_eff = _effective_date(highlight)
+    base = (
+        db.query(Highlight)
+        .filter(
+            Highlight.user_id == user_id,
+            Highlight.source_id == highlight.source_id,
+            Highlight.id != highlight.id,
+        )
+    )
+    before = (
+        base.filter(
+            (eff < cur_eff) | ((eff == cur_eff) & (Highlight.id < highlight.id))
+        )
+        .order_by(eff.desc(), Highlight.id.desc())
+        .limit(n)
+        .all()
+    )
+    after = (
+        base.filter(
+            (eff > cur_eff) | ((eff == cur_eff) & (Highlight.id > highlight.id))
+        )
+        .order_by(eff.asc(), Highlight.id.asc())
+        .limit(n)
+        .all()
+    )
+    return list(reversed(before)), after
+
+
 def get_source_for_user(source_id: str, user_id: str, db: Session) -> Optional[Source]:
     return (
         db.query(Source)
@@ -1576,12 +1610,15 @@ def get_highlight(
             },
         )
 
+    before, after = get_context_highlights(highlight, user.id, db)
     return templates.TemplateResponse(
         "detail.html",
         {
             "request": request,
             "highlight": highlight,
             "current_user": user,
+            "context_before": before,
+            "context_after": after,
         },
     )
 

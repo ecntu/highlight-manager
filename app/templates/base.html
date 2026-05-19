@@ -292,7 +292,7 @@
         .muted { color: var(--muted); }
         .muted-2 { color: var(--muted-2); }
 
-        .stack { display: grid; gap: 10px; }
+        .stack { display: grid; gap: 0; }
         .stack > * { min-width: 0; }
 
         .section-divider {
@@ -486,28 +486,17 @@
             color: var(--muted);
         }
 
-        /* ── List cards ── */
+        /* ── List items ── */
         .list-card {
-            background: var(--panel);
-            border: 1px solid var(--border);
-            border-radius: var(--radius-md);
-            padding: 14px 16px;
-            transition: border-color 0.15s, background 0.15s;
+            padding: 16px 0;
+            border-bottom: 1px solid var(--border);
             min-width: 0;
             overflow: hidden;
         }
 
-        .list-card:hover { border-color: var(--border-strong); background: var(--panel-subtle); }
+        .list-card:last-child { border-bottom: none; }
         .list-card.clickable { cursor: pointer; }
 
-        /* ── Mobile compact ── */
-        .mobile-compact-details { width: 100%; display: grid; gap: 5px; border-top: 1px solid var(--border); padding-top: 6px; }
-        .mobile-compact-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
-        .mobile-compact-topline { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; font-size: 11px; line-height: 1.2; flex: 1; min-width: 0; }
-        .mobile-compact-actions { display: flex; gap: 3px; flex: 0 0 auto; }
-        .mobile-compact-action-btn { width: 22px; height: 22px; min-width: 22px; border: none; background: none; color: var(--muted); }
-        .mobile-compact-pills { display: flex; flex-wrap: wrap; gap: 3px; align-items: center; }
-        .mobile-pill-action { min-height: 20px; padding: 2px 8px; font-size: 11px; font-weight: 600; }
 
         .desktop-only { display: flex; }
         .mobile-only { display: none; }
@@ -534,7 +523,7 @@
 
         /* ── Responsive ── */
         @media (max-width: 720px) {
-            .container { padding: 0 10px; }
+            .container { padding: 0 18px; }
             .page-content { padding-top: 18px; padding-bottom: 36px; }
 
             header { position: relative; backdrop-filter: none; border-bottom: none; }
@@ -543,7 +532,7 @@
                 flex-direction: row;
                 align-items: center;
                 gap: 8px;
-                padding: 8px 10px;
+                padding: 8px 18px;
             }
 
             .header-top { display: none; }
@@ -573,23 +562,11 @@
             .reminder-custom { display: grid; grid-template-columns: 1fr auto; gap: 8px; }
             .reminder-date-input { width: 100%; min-width: 0; }
 
-            .highlight-meta-primary { display: flex; }
-            .details-primary { display: none; }
-            .highlight-details[open] .highlight-details-content { padding-top: 4px; }
-
-            .desktop-only { display: none; }
-            .mobile-only { display: block; }
-            .mobile-only.row, .mobile-only.row-between { display: flex; }
-            .highlight-details-content { width: 100%; }
-
-            #highlight-view.card { padding: 14px !important; }
-            .mobile-compact-pills .pill { min-height: 19px; padding: 1px 6px; font-size: 11px; }
-            .mobile-compact-action-btn .icon { width: 13px; height: 13px; }
+            .context-scroll { margin: 0 -18px !important; padding: 0 18px !important; }
             .highlight-main-text { font-size: 14.5px !important; line-height: 1.55 !important; }
         }
 
         @media (min-width: 721px) {
-            .highlight-details { display: none; }
             .header-top { display: contents; }
         }
 
@@ -737,6 +714,13 @@
             </div>
 
             <nav>
+                <a href="/search?favorite=true" class="{% if request.url.path == '/search' and request.query_params.get('favorite') == 'true' %}nav-active{% endif %}">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                    </svg>
+                    <span class="nav-label">Favs</span>
+                </a>
                 <a href="/sources" class="{% if request.url.path.startswith('/sources') %}nav-active{% endif %}">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -763,6 +747,13 @@
         </div>
 
         <div id="burger-menu">
+            <a href="/search?favorite=true" class="{% if request.url.path == '/search' and request.query_params.get('favorite') == 'true' %}nav-active{% endif %}">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                </svg>
+                Favs
+            </a>
             <a href="/sources" class="{% if request.url.path.startswith('/sources') %}nav-active{% endif %}">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
