@@ -191,7 +191,8 @@ curl "{{ request.url.scheme }}://{{ request.url.netloc }}/api/highlights?limit=2
 */5 * * * * cd /path/to/highlight-manager && uv run python3 scripts/send_ntfy_reminders.py
 
 # Optional: include clickable links in ntfy
-PHM_BASE_URL={{ request.url.scheme }}://{{ request.url.netloc }} uv run python3 scripts/send_ntfy_reminders.py</pre>
+# Optional: resend overdue reminder notifications every 3 days (default)
+PHM_BASE_URL={{ request.url.scheme }}://{{ request.url.netloc }} PHM_NTFY_RESEND_DAYS=3 uv run python3 scripts/send_ntfy_reminders.py</pre>
     </details>
 
     <details class="settings-fold">
