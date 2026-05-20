@@ -42,6 +42,37 @@
             --font-serif: 'Lora', Georgia, 'Times New Roman', serif;
         }
 
+        :root {
+            --header-bg: rgba(246, 245, 241, 0.96);
+            --bg-fade: rgba(246, 245, 241, 0);
+            --bg-fade-mid: rgba(246, 245, 241, 0.6);
+        }
+
+        [data-theme="dark"] {
+            --bg: #2a2825;
+            --panel: #343230;
+            --panel-subtle: #3c3a37;
+            --border: #4a4743;
+            --border-strong: #626058;
+            --text: #bfbbb3;
+            --text-strong: #d4cfc6;
+            --muted: #948e86;
+            --muted-2: #6b6560;
+            --accent: #d97706;
+            --accent-strong: #f59e0b;
+            --accent-ring: rgba(217, 119, 6, 0.15);
+            --amber-bg: #2e2208;
+            --amber-text: #fcd34d;
+            --blue-bg: #0a2e1a;
+            --blue-text: #34d399;
+            --danger: #f87171;
+            --success: #34d399;
+            --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4);
+            --header-bg: rgba(42, 40, 37, 0.96);
+            --bg-fade: rgba(42, 40, 37, 0);
+            --bg-fade-mid: rgba(42, 40, 37, 0.6);
+        }
+
         body {
             font-family: var(--font-sans);
             line-height: 1.6;
@@ -66,7 +97,7 @@
             position: sticky;
             top: 0;
             z-index: 100;
-            background: rgba(246, 245, 241, 0.96);
+            background: var(--header-bg);
             border-bottom: 1px solid var(--border);
             backdrop-filter: blur(8px);
         }
@@ -77,20 +108,6 @@
             padding: 10px 24px;
             gap: 16px;
         }
-
-        .logo {
-            font-family: var(--font-serif);
-            font-size: 17px;
-            font-weight: 400;
-            color: var(--text);
-            text-decoration: none;
-            letter-spacing: -0.02em;
-            white-space: nowrap;
-            flex-shrink: 0;
-            transition: color 0.15s;
-        }
-
-        .logo:hover { color: var(--accent); }
 
         /* ── Search ── */
         .nav-search {
@@ -129,19 +146,6 @@
             pointer-events: none;
         }
 
-        .key-hint {
-            position: absolute;
-            right: 9px;
-            top: 50%;
-            transform: translateY(-50%);
-            padding: 2px 5px;
-            border-radius: 4px;
-            border: 1px solid var(--border);
-            background: var(--panel-subtle);
-            color: var(--muted-2);
-            font-size: 10.5px;
-            pointer-events: none;
-        }
 
         /* ── Search Dropdown ── */
         .search-dropdown {
@@ -210,8 +214,8 @@
 
         nav a svg { width: 15px; height: 15px; flex-shrink: 0; }
 
-        nav a:hover { color: var(--text); background: var(--border); }
-        nav a.nav-active { color: var(--text); background: var(--border); }
+        nav a:hover { color: var(--text); background: none; }
+        nav a.nav-active { color: var(--accent); background: none; }
 
         /* ── Cards ── */
         .card {
@@ -302,7 +306,7 @@
         }
 
         /* ── Reminder cards ── */
-        .reminder-card { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; background: var(--panel-subtle); }
+        .reminder-card { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
         .reminder-card-content { flex: 1; min-width: 0; }
         .reminder-card-actions { display: flex; align-items: flex-start; }
 
@@ -368,19 +372,19 @@
         .tab-btn {
             background: none;
             border: none;
+            outline: none;
             padding: 4px 10px;
             font-size: 13px;
             font-family: var(--font-sans);
             font-weight: 500;
             color: var(--muted-2);
             cursor: pointer;
-            border-bottom: 2px solid transparent;
-            transition: color 0.15s, border-color 0.15s;
+            transition: color 0.15s;
         }
 
-        .tab-btn:hover { color: var(--muted); }
+        .tab-btn:hover, .tab-btn:focus, .tab-btn:focus-visible { color: var(--muted); background: none; outline: none; box-shadow: none; }
         .tab-btn--active { color: var(--accent); font-weight: 600; }
-        .tab-btn--active:hover { color: var(--accent); }
+        .tab-btn--active:hover, .tab-btn--active:focus, .tab-btn--active:focus-visible { color: var(--accent); outline: none; box-shadow: none; }
 
         /* ── Filter selects (pill-shaped) ── */
         .filter-select {
@@ -661,7 +665,7 @@
             top: 100%;
             left: 0;
             right: 0;
-            background: var(--panel);
+            background: var(--bg);
             border-bottom: 1px solid var(--border);
             z-index: 99;
             padding: 6px 0;
@@ -679,7 +683,8 @@
             font-family: var(--font-sans);
             transition: background 0.1s, color 0.1s;
         }
-        #burger-menu a:hover, #burger-menu a.nav-active { background: var(--panel-subtle); color: var(--text); }
+        #burger-menu a:hover { background: var(--border); color: var(--text); }
+        #burger-menu a.nav-active { background: none; color: var(--accent); }
         #burger-menu a svg { width: 16px; height: 16px; flex-shrink: 0; }
 
         @media (min-width: 721px) {
@@ -691,29 +696,37 @@
         }
     </style>
     <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <script>
+        (function () {
+            if (localStorage.getItem('theme') === 'dark') {
+                document.documentElement.setAttribute('data-theme', 'dark');
+            }
+        })();
+    </script>
 </head>
 
 <body>
     {% if current_user %}
     <header>
         <div class="container">
-            <div class="header-top">
-                <a href="/highlights" class="logo">hl.</a>
-            </div>
             <div class="nav-search">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                         d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                 </svg>
-                <input type="text" id="nav-search" name="q" placeholder="Search highlights..."
+                <input type="text" id="nav-search" name="q" placeholder="Search highlights (⌘K)"
                     hx-get="/api/search-quick" hx-trigger="keyup changed delay:300ms" hx-target="#nav-search-results"
                     hx-include="#nav-search" autocomplete="off"
                     onkeydown="if(event.key==='Enter'){event.preventDefault();const v=this.value.trim();if(v.startsWith('#')&&!v.includes(' ')){window.location.href='/search?tag='+encodeURIComponent(v.slice(1));}else{window.location.href='/search?q='+encodeURIComponent(v);}}else if(event.key==='Escape'){this.value='';document.getElementById('nav-search-results').classList.remove('active');}">
-                <span class="key-hint">⌘K</span>
-                <div id="nav-search-results" class="search-dropdown"></div>
+<div id="nav-search-results" class="search-dropdown"></div>
             </div>
 
             <nav>
+                <a href="/highlights" title="Home">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                    </svg>
+                </a>
                 <a href="/search?favorite=true" class="{% if request.url.path == '/search' and request.query_params.get('favorite') == 'true' %}nav-active{% endif %}">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -747,6 +760,12 @@
         </div>
 
         <div id="burger-menu">
+            <a href="/highlights" class="{% if request.url.path == '/highlights' %}nav-active{% endif %}">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                </svg>
+                Home
+            </a>
             <a href="/search?favorite=true" class="{% if request.url.path == '/search' and request.query_params.get('favorite') == 'true' %}nav-active{% endif %}">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -803,6 +822,25 @@
         window.addEventListener('scroll', () => {
             document.getElementById('back-to-top').classList.toggle('visible', window.scrollY > 300);
         });
+
+        function toggleTheme() {
+            const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+            if (isDark) {
+                document.documentElement.removeAttribute('data-theme');
+                localStorage.removeItem('theme');
+            } else {
+                document.documentElement.setAttribute('data-theme', 'dark');
+                localStorage.setItem('theme', 'dark');
+            }
+            const cb = document.getElementById('dark-mode-toggle');
+            if (cb) cb.checked = !isDark;
+        }
+
+        (function () {
+            const dark = localStorage.getItem('theme') === 'dark';
+            const cb = document.getElementById('dark-mode-toggle');
+            if (cb) cb.checked = dark;
+        })();
 
         const burgerBtn = document.getElementById('burger-btn');
         const burgerMenu = document.getElementById('burger-menu');

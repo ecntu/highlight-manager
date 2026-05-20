@@ -55,6 +55,21 @@
 <h1 style="font-size: 20px; font-weight: 600; color: var(--text); margin-bottom: 28px; letter-spacing: -0.02em;">
     Settings</h1>
 
+<!-- Appearance -->
+<section style="margin-bottom: 32px; padding-bottom: 32px; border-bottom: 1px solid var(--border);">
+    <h2 class="section-title" style="margin-bottom: 16px;">Appearance</h2>
+    <div style="display: flex; align-items: center; justify-content: space-between; gap: 16px;">
+        <div>
+            <div style="font-size: 14px; font-weight: 500; color: var(--text); margin-bottom: 2px;">Dark mode</div>
+            <div style="font-size: 13px; color: var(--muted-2);">Switch between light and dark theme</div>
+        </div>
+        <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+            <input type="checkbox" id="dark-mode-toggle" class="settings-switch-input" style="position:absolute;opacity:0;width:0;height:0;" onchange="toggleTheme()">
+            <span class="settings-switch" id="dark-mode-switch"></span>
+        </label>
+    </div>
+</section>
+
 <!-- Account -->
 <section style="margin-bottom: 32px; padding-bottom: 32px; border-bottom: 1px solid var(--border);">
     <h2 class="section-title" style="margin-bottom: 12px;">Account</h2>
