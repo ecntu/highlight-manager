@@ -7,11 +7,12 @@ from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import or_, and_, func, case
 from datetime import datetime, timedelta, timezone
 from calendar import monthrange
-from urllib.parse import urlparse
+from urllib.parse import urlparse, quote
 import secrets
 import re
 import json
 import base64
+import html as html_lib
 from typing import Optional, Any, Literal
 from app.database import get_db, init_db_schema
 from app.models import (
@@ -2029,6 +2030,7 @@ def ui_search_sources(
 def sources_page(
     request: Request,
     q: Optional[str] = None,
+    author: Optional[str] = None,
     source_type: Optional[str] = Query(None, alias="type"),
     sort: Optional[str] = None,
     order_by: Literal["recent", "highlights", "favorites", "name"] = "recent",
@@ -2038,6 +2040,7 @@ def sources_page(
     db: Session = Depends(get_db),
 ):
     q = q.strip() if q else None
+    author = author.strip() if author else None
     if source_type:
         source_type = source_type.strip().lower()
         if source_type not in {SourceType.BOOK.value, SourceType.WEB.value}:
@@ -2106,6 +2109,8 @@ def sources_page(
                 Source.notes.any(Note.body.ilike(search)),
             )
         )
+    if author:
+        query = query.filter(func.lower(Source.author) == author.lower())
     if source_type:
         query = query.filter(Source.type == SourceType(source_type))
     if device_id:
@@ -2151,6 +2156,7 @@ def sources_page(
             "sources": sources,
             "current_user": user,
             "q": q or "",
+            "author": author or "",
             "source_type": source_type or "",
             "order_by": order_by,
             "order_dir": order_dir,
@@ -2478,6 +2484,7 @@ def search_quick(
     db: Session = Depends(get_db),
 ):
     results = []
+    source_results = []
     tag_search: Optional[str] = None
     q_text: Optional[str] = q
     if q and q.startswith("#"):
@@ -2499,14 +2506,45 @@ def search_quick(
         if matching_tags:
             html = ""
             for tag in matching_tags:
-                html += f'<a href="/search?tag={tag.name}" class="search-dropdown-item" style="text-decoration:none;color:inherit;display:flex;align-items:center;gap:8px;"><span style="font-size:13px;font-weight:500;">#{tag.name}</span></a>'
+                tag_name = html_lib.escape(tag.name)
+                tag_url = quote(tag.name)
+                html += f'<a href="/search?tag={tag_url}" class="search-dropdown-item" style="text-decoration:none;color:inherit;display:flex;align-items:center;gap:8px;"><span style="font-size:13px;font-weight:500;">#{tag_name}</span></a>'
             if tag_prefix:
-                html += f'<div class="search-dropdown-footer"><a href="/search?tag={tag_prefix}">Search highlights tagged "{tag_prefix}" →</a></div>'
+                tag_prefix_text = html_lib.escape(tag_prefix)
+                tag_prefix_url = quote(tag_prefix)
+                html += f'<div class="search-dropdown-footer"><a href="/search?tag={tag_prefix_url}">Search highlights tagged "{tag_prefix_text}" →</a></div>'
             return html
         # No matching tags — fall through to show highlights (or empty)
 
     if q and len(q.strip()) >= 2:
-        base = db.query(Highlight).filter(Highlight.user_id == user.id)
+        source_name = func.coalesce(
+            Source.display_name, Source.original_name, Source.title, Source.domain, ""
+        )
+        if not tag_search:
+            search_term = f"%{q}%"
+            source_results = (
+                db.query(Source.id, Source.type, source_name.label("source_name"), Source.author)
+                .filter(Source.user_id == user.id)
+                .filter(
+                    or_(
+                        Source.display_name.ilike(search_term),
+                        Source.original_name.ilike(search_term),
+                        Source.domain.ilike(search_term),
+                        Source.title.ilike(search_term),
+                        Source.author.ilike(search_term),
+                        Source.notes.any(Note.body.ilike(search_term)),
+                    )
+                )
+                .order_by(source_name.asc())
+                .limit(3)
+                .all()
+            )
+
+        base = (
+            db.query(Highlight)
+            .outerjoin(Source, Highlight.source_id == Source.id)
+            .filter(Highlight.user_id == user.id)
+        )
         if tag_search:
             base = base.filter(Highlight.tags.any(Tag.name == tag_search))
             if q_text:
@@ -2516,6 +2554,10 @@ def search_quick(
                         Highlight.text.ilike(search_term),
                         Highlight.notes.any(Note.body.ilike(search_term)),
                         Highlight.page_title.ilike(search_term),
+                        Highlight.page_author.ilike(search_term),
+                        Source.domain.ilike(search_term),
+                        Source.title.ilike(search_term),
+                        Source.author.ilike(search_term),
                     )
                 )
         else:
@@ -2525,37 +2567,63 @@ def search_quick(
                     Highlight.text.ilike(search_term),
                     Highlight.notes.any(Note.body.ilike(search_term)),
                     Highlight.page_title.ilike(search_term),
+                    Highlight.page_author.ilike(search_term),
+                    Source.domain.ilike(search_term),
+                    Source.title.ilike(search_term),
+                    Source.author.ilike(search_term),
                 )
             )
-        results = base.options(joinedload(Highlight.tags)).order_by(_effective_date().desc()).limit(5).all()
+        results = (
+            base.options(joinedload(Highlight.source), joinedload(Highlight.tags))
+            .order_by(_effective_date().desc())
+            .limit(5)
+            .all()
+        )
 
-    if not results:
+    if not results and not source_results:
         return ""
 
     # Return dropdown HTML with bold matches
     html = ""
+    for source in source_results:
+        source_name = html_lib.escape(source.source_name or "Unknown source")
+        source_type = html_lib.escape(source.type.value)
+        author = html_lib.escape(source.author) if source.author else ""
+        author_html = (
+            f'<span style="color: var(--muted);"> · {author}</span>' if author else ""
+        )
+        html += f"""
+        <a href="/sources/{source.id}" class="search-dropdown-item" style="text-decoration: none; color: inherit; display: block;">
+            <div style="font-size: 13px; color: var(--muted-2); margin-bottom: 3px; text-transform: capitalize;">{source_type}</div>
+            <div style="font-size: 14px; color: var(--text); font-weight: 500;">{source_name}{author_html}</div>
+        </a>
+        """
+
     for h in results:
         preview = h.text[:100] + "..." if len(h.text) > 100 else h.text
         # Apply highlighting
-        highlighted_preview = highlight_matches(preview, q_text or "")
-        source_text = h.source.name if h.source else "No source"
+        highlighted_preview = highlight_matches(
+            html_lib.escape(preview), html_lib.escape(q_text or "")
+        )
+        source_text = html_lib.escape(h.source.name if h.source else "No source")
         tag_chips = "".join(
-            f'<span style="font-size:11px;background:var(--tag-bg,#e8f0fe);color:var(--tag-color,#1967d2);border-radius:4px;padding:1px 6px;margin-left:4px;">#{t.name}</span>'
+            f'<span style="font-size:11px;background:var(--amber-bg);color:var(--amber-text);border-radius:4px;padding:1px 6px;margin-left:4px;">#{html_lib.escape(t.name)}</span>'
             for t in h.tags
         ) if tag_search else ""
 
         html += f"""
         <a href="/highlights/{h.id}" class="search-dropdown-item" style="text-decoration: none; color: inherit; display: block;">
-            <div style="font-size: 13px; color: #666; margin-bottom: 4px;">
+            <div style="font-size: 13px; color: var(--muted); margin-bottom: 4px;">
                 {source_text}{tag_chips}
             </div>
-            <div style="font-size: 14px; color: #1a1a1a;">{highlighted_preview}</div>
+            <div style="font-size: 14px; color: var(--text-strong);">{highlighted_preview}</div>
         </a>
         """
 
+    all_results_url = f"/search?q={quote(q or '')}"
     html += f"""
     <div class="search-dropdown-footer">
-        <a href="/search?q={q}">See all results →</a>
+        <a href="{all_results_url}">See all results →</a>
     </div>
     """
 
@@ -2606,6 +2674,7 @@ def search_page(
                 joinedload(Highlight.tags),
                 joinedload(Highlight.notes),
             )
+            .outerjoin(Source, Highlight.source_id == Source.id)
             .filter(Highlight.user_id == user.id)
         )
 
@@ -2615,11 +2684,16 @@ def search_page(
                 or_(
                     Highlight.text.ilike(search_term),
                     Highlight.notes.any(Note.body.ilike(search_term)),
+                    Highlight.page_title.ilike(search_term),
+                    Highlight.page_author.ilike(search_term),
+                    Source.domain.ilike(search_term),
+                    Source.title.ilike(search_term),
+                    Source.author.ilike(search_term),
                 )
             )
 
         if source_type:
-            query = query.join(Source).filter(Source.type == source_type)
+            query = query.filter(Source.type == source_type)
 
         if source_id:
             query = query.filter(Highlight.source_id == source_id)

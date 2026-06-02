@@ -13,7 +13,7 @@
     </div>
     <div class="row" style="gap: 10px; font-size: 13.5px;">
         {% if source.author %}
-        <span class="muted">{{ source.author }}</span>
+        <a href="/sources?author={{ source.author|urlencode }}" class="muted" style="text-decoration: none;">{{ source.author }}</a>
         <span class="meta-divider">·</span>
         {% endif %}
         <span class="muted-2" style="text-transform: capitalize;">{{ source.type.value }}</span>
