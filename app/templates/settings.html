@@ -80,6 +80,25 @@
     </div>
 </section>
 
+<!-- Home -->
+<section style="margin-bottom: 32px; padding-bottom: 32px; border-bottom: 1px solid var(--border);">
+    <h2 class="section-title" style="margin-bottom: 16px;">Home</h2>
+    <form method="post" action="/settings/home">
+        <div style="display: flex; align-items: flex-end; gap: 8px; flex-wrap: wrap;">
+            <div style="flex: 1; min-width: 220px;">
+                <label class="muted-2" style="display: block; margin-bottom: 6px; font-size: 12px;">Recent highlights device</label>
+                <select name="default_home_device_id" style="height: 34px; padding: 5px 9px; font-size: 13px;">
+                    <option value="">All</option>
+                    {% for device in home_filter_devices %}
+                    <option value="{{ device.id }}" {% if current_user.default_home_device_id==device.id %}selected{% endif %}>{{ device.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <button type="submit" class="btn btn--ghost btn--sm" style="height: 34px;">Save</button>
+        </div>
+    </form>
+</section>
+
 <!-- Device API Keys -->
 <section style="margin-bottom: 32px; padding-bottom: 32px; border-bottom: 1px solid var(--border);">
     <h2 class="section-title" style="margin-bottom: 16px;">Device API Keys</h2>

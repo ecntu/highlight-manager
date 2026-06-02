@@ -5,6 +5,7 @@
 <div style="margin-bottom: 28px; padding: 14px 16px; background: var(--panel-subtle); border: 1px solid var(--border); border-radius: var(--radius-md);">
     <form id="quick-add-form" hx-post="/highlights" hx-target="#highlights-list .stack" hx-swap="afterbegin"
         hx-on::after-request="resetQuickAdd()">
+        <input type="hidden" name="home_device_id" id="home-device-hidden" value="{{ selected_home_device_id }}">
         <div class="form-group" style="margin-bottom: 0;">
             <textarea id="highlight-text" name="text"
                 placeholder="Paste a highlight to save it..."
@@ -69,8 +70,16 @@
 
 <!-- Recent Highlights / Sources -->
 <div class="row-between compact-header" style="margin-bottom: 14px;">
-    <div class="row" style="gap: 14px; align-items: center;">
+    <div class="row" style="gap: 10px; align-items: center; flex-wrap: wrap;">
         <h2 class="section-title" style="margin: 0;">Recent</h2>
+        <form id="home-device-filter-form" method="get" action="/highlights" style="margin: 0;">
+            <select name="device_id" class="filter-select" onchange="this.form.requestSubmit()" aria-label="Recent device filter">
+                <option value="" {% if not selected_home_device_id %}selected{% endif %}>All</option>
+                {% for device in home_filter_devices %}
+                <option value="{{ device.id }}" {% if selected_home_device_id==device.id %}selected{% endif %}>{{ device.name }}</option>
+                {% endfor %}
+            </select>
+        </form>
         <div class="tab-row">
             <button id="tab-highlights" class="tab-btn tab-btn--active" onclick="switchRecentTab('highlights')">Highlights</button>
             <button id="tab-sources" class="tab-btn" onclick="switchRecentTab('sources')">Sources</button>
@@ -122,13 +131,16 @@
 <script>
     function switchRecentTab(tab) {
         const showingHighlights = tab === 'highlights';
+        const deviceId = document.getElementById('home-device-hidden')?.value || '';
+        const deviceQuery = deviceId ? '?device_id=' + encodeURIComponent(deviceId) : '';
         document.getElementById('highlights-list').style.display = showingHighlights ? '' : 'none';
         document.getElementById('sources-list').style.display = showingHighlights ? 'none' : '';
-        document.getElementById('recent-show-more').href = showingHighlights ? '/search' : '/sources';
+        document.getElementById('recent-show-more').href = showingHighlights ? '/search' + deviceQuery : '/sources' + deviceQuery;
 
         document.getElementById('tab-highlights').className = 'tab-btn' + (showingHighlights ? ' tab-btn--active' : '');
         document.getElementById('tab-sources').className = 'tab-btn' + (!showingHighlights ? ' tab-btn--active' : '');
     }
+    switchRecentTab('highlights');
 </script>
 
 <script>

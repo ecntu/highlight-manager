@@ -232,8 +232,10 @@ def build_settings_context(request: Request, user: User, db: Session, **extra: A
     devices = (
         db.query(Device)
         .filter(Device.user_id == user.id, Device.revoked_at.is_(None))
+        .order_by(Device.name.asc())
         .all()
     )
+    home_filter_devices = [device for device in devices if device.scope != DeviceScope.READ_ONLY]
     reminder_statuses = (
         db.query(Reminder)
         .options(joinedload(Reminder.highlight).joinedload(Highlight.source))
@@ -246,6 +248,7 @@ def build_settings_context(request: Request, user: User, db: Session, **extra: A
         "request": request,
         "current_user": user,
         "devices": devices,
+        "home_filter_devices": home_filter_devices,
         "ntfy_config": ntfy_config,
         "reminder_statuses": reminder_statuses,
         "now": datetime.utcnow(),
@@ -800,17 +803,55 @@ def login(
 
 @app.get("/highlights", response_class=HTMLResponse)
 def list_highlights(
-    request: Request, user: User = Depends(require_user), db: Session = Depends(get_db)
+    request: Request,
+    device_id: Optional[str] = None,
+    user: User = Depends(require_user),
+    db: Session = Depends(get_db),
 ):
     get_or_create_web_device(user.id, db, backfill=True)
     now = datetime.utcnow()
-    highlights = (
-        db.query(Highlight)
-        .filter(Highlight.user_id == user.id)
-        .order_by(_effective_date().desc())
-        .limit(20)
+    home_filter_devices = (
+        db.query(Device)
+        .filter(
+            Device.user_id == user.id,
+            Device.revoked_at.is_(None),
+            Device.scope != DeviceScope.READ_ONLY,
+        )
+        .order_by(Device.name.asc())
         .all()
     )
+    selected_home_device_id = (
+        device_id.strip()
+        if device_id is not None
+        else (user.default_home_device_id or "")
+    )
+    selected_home_device = None
+    if selected_home_device_id:
+        selected_home_device = (
+            db.query(Device)
+            .filter(
+                Device.id == selected_home_device_id,
+                Device.user_id == user.id,
+                Device.revoked_at.is_(None),
+                Device.scope != DeviceScope.READ_ONLY,
+            )
+            .first()
+        )
+        if not selected_home_device:
+            if device_id is None:
+                user.default_home_device_id = None
+                db.commit()
+            selected_home_device_id = ""
+
+    highlights_query = (
+        db.query(Highlight)
+        .filter(Highlight.user_id == user.id)
+    )
+    if selected_home_device:
+        highlights_query = highlights_query.filter(
+            Highlight.device_id == selected_home_device.id
+        )
+    highlights = highlights_query.order_by(_effective_date().desc()).limit(20).all()
     due_reminders = (
         db.query(Reminder)
         .options(joinedload(Reminder.highlight).joinedload(Highlight.source))
@@ -823,20 +864,25 @@ def list_highlights(
         Source.display_name, Source.original_name, Source.title, Source.domain, ""
     )
     _last_hl = func.max(func.coalesce(Highlight.highlighted_at, Highlight.created_at))
+    recent_sources_query = db.query(
+        Source.id,
+        Source.type,
+        _src_name.label("source_name"),
+        Source.author,
+        func.count(Highlight.id).label("highlight_count"),
+        func.sum(case((Highlight.is_favorite.is_(True), 1), else_=0)).label("favorite_highlight_count"),
+        _last_hl.label("last_highlight_at"),
+    )
+    source_join_condition = (Highlight.source_id == Source.id) & (Highlight.user_id == user.id)
+    if selected_home_device:
+        source_join_condition = source_join_condition & (
+            Highlight.device_id == selected_home_device.id
+        )
+        recent_sources_query = recent_sources_query.join(Highlight, source_join_condition)
+    else:
+        recent_sources_query = recent_sources_query.outerjoin(Highlight, source_join_condition)
     recent_sources = (
-        db.query(
-            Source.id,
-            Source.type,
-            _src_name.label("source_name"),
-            Source.author,
-            func.count(Highlight.id).label("highlight_count"),
-            func.sum(case((Highlight.is_favorite.is_(True), 1), else_=0)).label("favorite_highlight_count"),
-            _last_hl.label("last_highlight_at"),
-        )
-        .outerjoin(
-            Highlight,
-            (Highlight.source_id == Source.id) & (Highlight.user_id == user.id),
-        )
+        recent_sources_query
         .filter(Source.user_id == user.id)
         .group_by(
             Source.id, Source.type, Source.display_name, Source.original_name,
@@ -853,6 +899,9 @@ def list_highlights(
             "highlights": highlights,
             "recent_sources": recent_sources,
             "due_reminders": due_reminders,
+            "home_filter_devices": home_filter_devices,
+            "selected_home_device": selected_home_device,
+            "selected_home_device_id": selected_home_device_id,
             "current_user": user,
         },
     )
@@ -870,6 +919,7 @@ def create_highlight(
     source_title: Optional[str] = Form(None),
     source_author: Optional[str] = Form(None),
     source_id: Optional[str] = Form(None),
+    home_device_id: Optional[str] = Form(None),
     user: User = Depends(require_user),
     db: Session = Depends(get_db),
 ):
@@ -904,6 +954,16 @@ def create_highlight(
     db.refresh(highlight)
 
     if is_htmx(request):
+        active_home_device_id = (
+            home_device_id.strip()
+            if home_device_id is not None
+            else (user.default_home_device_id or "")
+        )
+        if (
+            active_home_device_id
+            and highlight.device_id != active_home_device_id
+        ):
+            return HTMLResponse("", status_code=200)
         return templates.TemplateResponse(
             "partials/highlight_item.html",
             {"request": request, "highlight": highlight},
@@ -1051,10 +1111,46 @@ def delete_device(
         raise HTTPException(status_code=400, detail="Web device cannot be revoked")
     if device:
         device.revoked_at = datetime.utcnow()
+        if user.default_home_device_id == device.id:
+            user.default_home_device_id = None
         db.commit()
 
     if is_htmx(request):
         return HTMLResponse("", status_code=200)
+    return RedirectResponse(url="/settings", status_code=303)
+
+
+@app.post("/settings/home")
+def update_home_settings(
+    request: Request,
+    default_home_device_id: Optional[str] = Form(None),
+    user: User = Depends(require_user),
+    db: Session = Depends(get_db),
+):
+    default_home_device_id = (
+        default_home_device_id.strip() if default_home_device_id else None
+    )
+    if default_home_device_id:
+        device = (
+            db.query(Device)
+            .filter(
+                Device.id == default_home_device_id,
+                Device.user_id == user.id,
+                Device.revoked_at.is_(None),
+                Device.scope != DeviceScope.READ_ONLY,
+            )
+            .first()
+        )
+        if not device:
+            raise HTTPException(status_code=400, detail="Invalid default device")
+
+    user.default_home_device_id = default_home_device_id
+    db.commit()
+
+    if is_htmx(request):
+        response = Response(status_code=200)
+        response.headers["HX-Redirect"] = "/settings"
+        return response
     return RedirectResponse(url="/settings", status_code=303)
 
 

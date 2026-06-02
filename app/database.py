@@ -13,6 +13,14 @@ def migrate_schema():
     inspector = inspect(engine)
     tables = set(inspector.get_table_names())
 
+    if "users" in tables:
+        user_columns = {column["name"] for column in inspector.get_columns("users")}
+        with engine.begin() as conn:
+            if "default_home_device_id" not in user_columns:
+                conn.execute(
+                    text("ALTER TABLE users ADD COLUMN default_home_device_id VARCHAR(36)")
+                )
+
     if "sources" in tables:
         source_columns = {column["name"] for column in inspector.get_columns("sources")}
         with engine.begin() as conn:

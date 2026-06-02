@@ -6,5 +6,5 @@
     {% endif %}
 </div>
 {% if not highlights %}
-<p class="muted" style="text-align: center; padding: 40px 0;">No highlights yet. Add your first one above!</p>
+<p class="muted" style="text-align: center; padding: 40px 0;">{% if selected_home_device %}No recent highlights from {{ selected_home_device.name }}.{% else %}No highlights yet. Add your first one above!{% endif %}</p>
 {% endif %}
