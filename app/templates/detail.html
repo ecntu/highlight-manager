@@ -6,8 +6,8 @@
 {% include 'partials/highlight_card.html' %}
 
 {% if context_before or context_after %}
-<div style="margin-top: 20px; overflow: hidden; position: relative;">
-    <div id="context-scroll" style="overflow-x: auto; display: flex; gap: 16px; scrollbar-width: none; margin: 0 -24px; padding: 0 24px;" class="context-scroll">
+<div class="scroll-fade-wrap" data-scroll-at-start="true" style="margin-top: 20px;">
+    <div id="context-scroll" class="detail-context-scroll" style="overflow-x: auto; display: flex; gap: 16px; scrollbar-width: none; padding: 0 24px 2px;">
         {% for ctx in context_before %}
         <a href="/highlights/{{ ctx.id }}" style="flex: 0 0 200px; text-decoration: none;">
             <p style="margin: 0; font-size: 13px; color: var(--muted-2); line-height: 1.6; display: -webkit-box; -webkit-line-clamp: 6; -webkit-box-orient: vertical; overflow: hidden; transition: color 0.15s;" onmouseover="this.style.color='var(--muted)'" onmouseout="this.style.color='var(--muted-2)'">{{ ctx.text }}</p>
@@ -19,15 +19,25 @@
             <p style="margin: 0; font-size: 13px; color: var(--muted-2); line-height: 1.6; display: -webkit-box; -webkit-line-clamp: 6; -webkit-box-orient: vertical; overflow: hidden; transition: color 0.15s;" onmouseover="this.style.color='var(--muted)'" onmouseout="this.style.color='var(--muted-2)'">{{ ctx.text }}</p>
         </a>
         {% endfor %}
-        <div style="flex: 0 0 24px;"></div>
     </div>
-    <div class="desktop-only" style="position: absolute; top: 0; left: 0; bottom: 0; width: 32px; background: linear-gradient(to right, var(--bg) 0%, var(--bg-fade-mid) 50%, var(--bg-fade) 100%); pointer-events: none;"></div>
-    <div class="desktop-only" style="position: absolute; top: 0; right: 0; bottom: 0; width: 32px; background: linear-gradient(to left, var(--bg) 0%, var(--bg-fade-mid) 50%, var(--bg-fade) 100%); pointer-events: none;"></div>
+    <div class="desktop-only scroll-fade scroll-fade--left" style="top: 0;"></div>
+    <div class="desktop-only scroll-fade scroll-fade--right" style="top: 0;"></div>
 </div>
 <script>
     (function () {
         const divider = document.getElementById('context-divider');
-        if (divider) divider.scrollIntoView({ inline: 'center', block: 'nearest' });
+        const scroller = document.getElementById('context-scroll');
+        if (!divider || !scroller) return;
+
+        requestAnimationFrame(() => {
+            const dividerRect = divider.getBoundingClientRect();
+            const scrollerRect = scroller.getBoundingClientRect();
+            const dividerCenter = dividerRect.left + dividerRect.width / 2;
+            const scrollerCenter = scrollerRect.left + scrollerRect.width / 2;
+
+            scroller.scrollLeft += dividerCenter - scrollerCenter;
+            window.updateScrollFades?.();
+        });
     })();
 </script>
 {% endif %}

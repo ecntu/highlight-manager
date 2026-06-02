@@ -505,6 +505,32 @@
         .desktop-only { display: flex; }
         .mobile-only { display: none; }
 
+        .scroll-fade-wrap {
+            overflow: hidden;
+            position: relative;
+        }
+
+        .scroll-fade {
+            position: absolute;
+            bottom: 0;
+            width: 24px;
+            background: linear-gradient(to right, var(--bg) 0%, var(--bg-fade-mid) 50%, var(--bg-fade) 100%);
+            opacity: 1;
+            pointer-events: none;
+            transition: opacity 0.15s;
+        }
+
+        .scroll-fade--left { left: 0; }
+        .scroll-fade--right {
+            right: 0;
+            transform: scaleX(-1);
+        }
+
+        .scroll-fade-wrap[data-scroll-at-start="true"] .scroll-fade--left,
+        .scroll-fade-wrap[data-scroll-at-end="true"] .scroll-fade--right {
+            opacity: 0;
+        }
+
         /* ── Modal ── */
         .modal-btn {
             width: 100%;
@@ -702,6 +728,38 @@
                 document.documentElement.setAttribute('data-theme', 'dark');
             }
         })();
+
+        function scrollFadeWraps(root = document) {
+            const wraps = Array.from(root.querySelectorAll('.scroll-fade-wrap'));
+            if (root.classList?.contains('scroll-fade-wrap')) wraps.unshift(root);
+            return wraps;
+        }
+
+        window.updateScrollFades = function (root = document) {
+            scrollFadeWraps(root).forEach((wrap) => {
+                const scroller = wrap.querySelector('.context-scroll, .detail-context-scroll');
+                if (!scroller) return;
+
+                const maxScroll = scroller.scrollWidth - scroller.clientWidth;
+                wrap.dataset.scrollAtStart = String(scroller.scrollLeft <= 1);
+                wrap.dataset.scrollAtEnd = String(maxScroll <= 1 || scroller.scrollLeft >= maxScroll - 1);
+            });
+        };
+
+        function initScrollFades(root = document) {
+            scrollFadeWraps(root).forEach((wrap) => {
+                const scroller = wrap.querySelector('.context-scroll, .detail-context-scroll');
+                if (!scroller || scroller.dataset.fadeListenerAttached === 'true') return;
+
+                scroller.dataset.fadeListenerAttached = 'true';
+                scroller.addEventListener('scroll', () => window.updateScrollFades(wrap), { passive: true });
+            });
+            window.updateScrollFades(root);
+            requestAnimationFrame(() => window.updateScrollFades(root));
+        }
+
+        document.addEventListener('DOMContentLoaded', () => initScrollFades());
+        document.addEventListener('htmx:afterSettle', (event) => initScrollFades(event.target));
     </script>
 </head>
 

@@ -5,7 +5,7 @@ from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import or_, and_, func, case
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone, date
 from calendar import monthrange
 from urllib.parse import urlparse, quote
 import secrets
@@ -118,6 +118,9 @@ WEB_DEVICE_NAME = "Web"
 WEB_DEVICE_PREFIX = "web"
 SOURCE_HIGHLIGHTS_PREVIEW_LIMIT = 25
 HOME_DUE_REMINDERS_LIMIT = 10
+HOME_RESURFACED_PER_BUCKET_LIMIT = 3
+HOME_RESURFACED_TOTAL_LIMIT = 8
+HOME_RESURFACED_WINDOW_DAYS = 1
 API_HIGHLIGHTS_DEFAULT_LIMIT = 50
 API_HIGHLIGHTS_MAX_LIMIT = 200
 API_SOURCES_DEFAULT_LIMIT = 50
@@ -662,6 +665,93 @@ def _effective_date(highlight_or_cls=None):
     return func.coalesce(highlight_or_cls.highlighted_at, highlight_or_cls.created_at)
 
 
+def add_months(value: date, months: int) -> date:
+    month_index = value.month - 1 + months
+    year = value.year + month_index // 12
+    month = month_index % 12 + 1
+    day = min(value.day, monthrange(year, month)[1])
+    return date(year, month, day)
+
+
+def resurfaced_label(months_ago: int, target_date: date) -> str:
+    years = months_ago // 12
+    label = f"{years} year{'s' if years != 1 else ''} ago"
+    return f"{label} · {target_date.strftime('%b %-d, %Y')}"
+
+
+def build_resurfaced_groups(
+    user_id: str, db: Session, today: Optional[date] = None
+) -> list[dict[str, Any]]:
+    today = today or datetime.utcnow().date()
+    oldest_effective = (
+        db.query(func.min(_effective_date()))
+        .filter(Highlight.user_id == user_id, Highlight.status == HighlightStatus.ACTIVE)
+        .scalar()
+    )
+    if not oldest_effective:
+        return []
+
+    oldest_date = oldest_effective.date() if isinstance(oldest_effective, datetime) else oldest_effective
+    oldest_months = max(0, (today.year - oldest_date.year) * 12 + today.month - oldest_date.month)
+    bucket_months = [years * 12 for years in range(1, oldest_months // 12 + 1)]
+    groups = []
+    seen_highlight_ids: set[str] = set()
+    total_count = 0
+
+    for months_ago in bucket_months:
+        if total_count >= HOME_RESURFACED_TOTAL_LIMIT:
+            break
+        target_date = add_months(today, -months_ago)
+        window_start = datetime.combine(
+            target_date - timedelta(days=HOME_RESURFACED_WINDOW_DAYS),
+            datetime.min.time(),
+        )
+        window_end = datetime.combine(
+            target_date + timedelta(days=HOME_RESURFACED_WINDOW_DAYS),
+            datetime.max.time(),
+        )
+        bucket_limit = min(
+            HOME_RESURFACED_PER_BUCKET_LIMIT,
+            HOME_RESURFACED_TOTAL_LIMIT - total_count,
+        )
+        bucket_highlights = (
+            db.query(Highlight)
+            .options(
+                joinedload(Highlight.source),
+                joinedload(Highlight.tags),
+                joinedload(Highlight.notes),
+            )
+            .filter(
+                Highlight.user_id == user_id,
+                Highlight.status == HighlightStatus.ACTIVE,
+                _effective_date() >= window_start,
+                _effective_date() <= window_end,
+            )
+            .order_by(Highlight.is_favorite.desc(), _effective_date().desc())
+            .limit(bucket_limit + len(seen_highlight_ids))
+            .all()
+        )
+        bucket_highlights = [
+            highlight
+            for highlight in bucket_highlights
+            if highlight.id not in seen_highlight_ids
+        ][:bucket_limit]
+        if not bucket_highlights:
+            continue
+
+        for highlight in bucket_highlights:
+            seen_highlight_ids.add(highlight.id)
+        total_count += len(bucket_highlights)
+        groups.append(
+            {
+                "label": resurfaced_label(months_ago, target_date),
+                "highlights": bucket_highlights,
+            }
+        )
+
+    return groups
+
+
 def decode_api_cursor(cursor: str) -> dict[str, Any]:
     try:
         raw = base64.urlsafe_b64decode(cursor.encode("utf-8"))
@@ -860,6 +950,7 @@ def list_highlights(
         .limit(HOME_DUE_REMINDERS_LIMIT)
         .all()
     )
+    resurfaced_groups = build_resurfaced_groups(user.id, db, today=now.date())
     _src_name = func.coalesce(
         Source.display_name, Source.original_name, Source.title, Source.domain, ""
     )
@@ -899,6 +990,7 @@ def list_highlights(
             "highlights": highlights,
             "recent_sources": recent_sources,
             "due_reminders": due_reminders,
+            "resurfaced_groups": resurfaced_groups,
             "home_filter_devices": home_filter_devices,
             "selected_home_device": selected_home_device,
             "selected_home_device_id": selected_home_device_id,
