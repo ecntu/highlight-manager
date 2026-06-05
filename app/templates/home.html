@@ -120,11 +120,44 @@
             <button id="tab-highlights" class="tab-btn tab-btn--active" onclick="switchRecentTab('highlights')">Highlights</button>
             <button id="tab-sources" class="tab-btn" onclick="switchRecentTab('sources')">Sources</button>
         </div>
+        <button type="button" class="mobile-filter-btn{% if selected_home_device_id %} mobile-filter-btn--active{% endif %}" onclick="openFilterSheet()" aria-label="Filters">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/>
+            </svg>
+            {% if selected_home_device_id %}<span class="mobile-filter-badge"></span>{% endif %}
+        </button>
         <a id="recent-show-more" href="/search" class="section-meta" style="text-decoration: none; white-space: nowrap; margin-left: auto;">More</a>
     </div>
     <div class="recent-row-bottom">
         <form id="home-device-filter-form" method="get" action="/highlights" style="margin: 0;">
             <select name="device_id" class="filter-select" onchange="this.form.requestSubmit()" aria-label="Recent device filter">
+                <option value="" {% if not selected_home_device_id %}selected{% endif %}>All</option>
+                {% for device in home_filter_devices %}
+                <option value="{{ device.id }}" {% if selected_home_device_id==device.id %}selected{% endif %}>{{ device.name }}</option>
+                {% endfor %}
+            </select>
+        </form>
+    </div>
+</div>
+
+<!-- Filter bottom sheet (mobile only) -->
+<div class="filter-sheet-overlay" id="filter-sheet-overlay" onclick="closeFilterSheet()"></div>
+<div class="filter-sheet" id="filter-sheet" role="dialog" aria-modal="true" aria-label="Filters">
+    <div class="filter-sheet-handle"></div>
+    <p class="filter-sheet-heading">Filters</p>
+
+    <div class="filter-sheet-section">
+        <p class="filter-sheet-label">Show</p>
+        <div class="filter-toggle-group">
+            <button type="button" class="filter-toggle-btn" id="sheet-tab-highlights" onclick="sheetSwitchTab('highlights')">Highlights</button>
+            <button type="button" class="filter-toggle-btn" id="sheet-tab-sources" onclick="sheetSwitchTab('sources')">Sources</button>
+        </div>
+    </div>
+
+    <div class="filter-sheet-section">
+        <p class="filter-sheet-label">Device</p>
+        <form method="get" action="/highlights" onchange="this.requestSubmit()">
+            <select name="device_id" class="filter-select" style="width:100%; border-radius:var(--radius-sm);" aria-label="Filter by device">
                 <option value="" {% if not selected_home_device_id %}selected{% endif %}>All</option>
                 {% for device in home_filter_devices %}
                 <option value="{{ device.id }}" {% if selected_home_device_id==device.id %}selected{% endif %}>{{ device.name }}</option>
@@ -374,5 +407,24 @@
         }
     `;
     document.head.appendChild(style);
+
+    function openFilterSheet() {
+        const isHighlights = document.getElementById('tab-highlights').classList.contains('tab-btn--active');
+        document.getElementById('sheet-tab-highlights').classList.toggle('filter-toggle-btn--active', isHighlights);
+        document.getElementById('sheet-tab-sources').classList.toggle('filter-toggle-btn--active', !isHighlights);
+        document.getElementById('filter-sheet-overlay').classList.add('open');
+        document.getElementById('filter-sheet').classList.add('open');
+        document.body.style.overflow = 'hidden';
+    }
+    function closeFilterSheet() {
+        document.getElementById('filter-sheet-overlay').classList.remove('open');
+        document.getElementById('filter-sheet').classList.remove('open');
+        document.body.style.overflow = '';
+    }
+    function sheetSwitchTab(tab) {
+        switchRecentTab(tab);
+        closeFilterSheet();
+    }
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeFilterSheet(); });
 </script>
 {% endblock %}

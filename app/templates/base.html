@@ -526,6 +526,119 @@
             #recent-show-more { order: 99; }
         }
 
+        /* ── Mobile filter icon button ── */
+        .mobile-filter-btn {
+            display: none;
+            position: relative;
+            background: none;
+            border: none;
+            padding: 4px;
+            color: var(--muted);
+            cursor: pointer;
+            border-radius: var(--radius-sm);
+            align-items: center;
+            justify-content: center;
+            transition: color 0.15s;
+            flex-shrink: 0;
+        }
+        .mobile-filter-btn svg { width: 16px; height: 16px; }
+        .mobile-filter-btn:hover { color: var(--text); }
+        .mobile-filter-btn--active { color: var(--accent); }
+        .mobile-filter-badge {
+            position: absolute;
+            top: 1px; right: 1px;
+            width: 6px; height: 6px;
+            background: var(--accent);
+            border-radius: 50%;
+        }
+
+        @media (max-width: 720px) {
+            .mobile-filter-btn { display: flex; }
+            .recent-row-top .tab-row { display: none; }
+            .recent-row-bottom { display: none; }
+        }
+
+        /* ── Filter bottom sheet (mobile) ── */
+        .filter-sheet-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.35);
+            z-index: 300;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.22s;
+        }
+        .filter-sheet-overlay.open { opacity: 1; pointer-events: auto; }
+
+        .filter-sheet {
+            position: fixed;
+            bottom: 0; left: 0; right: 0;
+            background: var(--panel);
+            border-radius: 14px 14px 0 0;
+            border-top: 1px solid var(--border);
+            z-index: 301;
+            transform: translateY(100%);
+            transition: transform 0.28s cubic-bezier(0.32, 0.72, 0, 1);
+            max-height: 72vh;
+            overflow-y: auto;
+            padding-bottom: env(safe-area-inset-bottom, 0px);
+        }
+        .filter-sheet.open { transform: translateY(0); }
+
+        .filter-sheet-handle {
+            width: 32px; height: 4px;
+            background: var(--border-strong);
+            border-radius: 2px;
+            margin: 10px auto 0;
+        }
+        .filter-sheet-heading {
+            padding: 10px 20px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.07em;
+            color: var(--muted-2);
+            border-bottom: 1px solid var(--border);
+            margin: 0;
+        }
+        .filter-sheet-section {
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--border);
+        }
+        .filter-sheet-section:last-child { border-bottom: none; }
+        .filter-sheet-label {
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: var(--muted-2);
+            margin: 0 0 10px;
+        }
+        .filter-toggle-group {
+            display: flex;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            overflow: hidden;
+        }
+        .filter-toggle-btn {
+            flex: 1;
+            padding: 10px 12px;
+            background: none;
+            border: none;
+            font-size: 14px;
+            font-family: var(--font-sans);
+            font-weight: 500;
+            color: var(--muted);
+            cursor: pointer;
+            transition: background 0.12s, color 0.12s;
+        }
+        .filter-toggle-btn:not(:last-child) { border-right: 1px solid var(--border); }
+        .filter-toggle-btn--active { background: var(--panel-subtle); color: var(--text); }
+
+        @media (min-width: 721px) {
+            .filter-sheet, .filter-sheet-overlay, .mobile-filter-btn { display: none !important; }
+        }
+
         /* ── Theme toggle ── */
         .nav-theme-btn {
             background: none;
