@@ -629,6 +629,9 @@ def merge_sources(source_to_remove: Source, target_source: Source, user_id: str,
     if not target_source.original_name and source_to_remove.original_name:
         target_source.original_name = source_to_remove.original_name
 
+    # Persist child moves before deleting the old source. Otherwise the database
+    # can apply ON DELETE SET NULL to highlights that are also being moved.
+    db.flush()
     db.delete(source_to_remove)
     db.commit()
 
